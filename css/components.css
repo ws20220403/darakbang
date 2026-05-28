@@ -1,0 +1,468 @@
+/* components.css — 공통 UI 컴포넌트 (버튼, 모달, 토스트, 이모지 피커, 컨텍스트 메뉴) */
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 10px var(--spacing-lg);
+  background: var(--color-brand);
+  color: white;
+  border-radius: var(--border-radius-md);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 2px 8px rgba(108, 99, 255, 0.3);
+  white-space: nowrap;
+}
+
+.btn-primary:hover {
+  background: var(--color-brand-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(108, 99, 255, 0.4);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-primary .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 10px var(--spacing-lg);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 10px var(--spacing-lg);
+  background: var(--color-danger);
+  color: white;
+  border-radius: var(--border-radius-md);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-danger:hover {
+  background: var(--color-danger-hover);
+  transform: translateY(-1px);
+}
+
+/* =========================================================
+   ICON (SVG 공통)
+========================================================= */
+.icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   MODAL OVERLAY
+========================================================= */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--spacing-lg);
+  animation: fadeIn 0.15s ease;
+}
+
+.modal {
+  background: var(--bg-modal);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-xl);
+  padding: var(--spacing-xl);
+  max-width: 440px;
+  width: 100%;
+  box-shadow: var(--shadow-xl);
+  animation: slideUp 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-sm {
+  max-width: 360px;
+}
+
+.modal-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+  letter-spacing: -0.02em;
+}
+
+.modal-body {
+  font-size: 0.925rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: var(--spacing-lg);
+}
+
+.modal-input {
+  width: 100%;
+  padding: 10px var(--spacing-md);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 0.925rem;
+  transition: all var(--transition-fast);
+  margin-bottom: var(--spacing-lg);
+  display: block;
+}
+
+.modal-input:focus {
+  border-color: var(--color-brand);
+  background: var(--bg-main);
+  box-shadow: 0 0 0 3px var(--color-brand-dim);
+  outline: none;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
+/* =========================================================
+   TOAST NOTIFICATIONS
+========================================================= */
+.toast-container {
+  position: fixed;
+  bottom: var(--spacing-xl);
+  right: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  z-index: 2000;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-toast);
+  color: white;
+  border-radius: var(--border-radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  min-width: 200px;
+  max-width: 360px;
+  pointer-events: all;
+  animation: toastIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.toast.toast-out {
+  animation: toastOut 0.2s ease forwards;
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(8px) scale(0.95); }
+}
+
+.toast-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.toast-msg {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.toast.toast-success { background: #27ae60; }
+.toast.toast-error   { background: var(--color-danger); }
+.toast.toast-warning { background: var(--color-warning); color: #333; }
+.toast.toast-info    { background: var(--color-brand); }
+
+/* =========================================================
+   EMOJI PICKER
+========================================================= */
+.emoji-picker {
+  position: fixed;
+  background: var(--bg-modal);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--shadow-xl);
+  width: 320px;
+  z-index: 600;
+  overflow: hidden;
+  animation: slideUp 0.15s ease;
+}
+
+.emoji-picker-header {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.emoji-search {
+  width: 100%;
+  padding: 6px var(--spacing-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border-radius: var(--border-radius-sm);
+  font-size: 0.875rem;
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-fast);
+}
+
+.emoji-search:focus {
+  border-color: var(--color-brand);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-brand-dim);
+}
+
+.emoji-search::placeholder {
+  color: var(--color-placeholder);
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  padding: var(--spacing-sm);
+  max-height: 280px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.emoji-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  font-size: 1.25rem;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  line-height: 1;
+}
+
+.emoji-item:hover {
+  background: var(--bg-hover);
+  transform: scale(1.1);
+}
+
+/* =========================================================
+   CONTEXT MENU
+========================================================= */
+.context-menu {
+  position: fixed;
+  background: var(--bg-modal);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-lg);
+  min-width: 180px;
+  padding: var(--spacing-xs) 0;
+  z-index: 800;
+  animation: slideUp 0.12s ease;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 8px var(--spacing-md);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.context-menu-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.context-menu-item .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--text-muted);
+}
+
+.context-menu-item-danger {
+  color: var(--color-danger);
+}
+
+.context-menu-item-danger:hover {
+  background: rgba(231, 76, 60, 0.08);
+  color: var(--color-danger);
+}
+
+.context-menu-item-danger .icon {
+  color: var(--color-danger);
+}
+
+.context-menu-separator {
+  height: 1px;
+  background: var(--border-color);
+  margin: var(--spacing-xs) 0;
+}
+
+/* =========================================================
+   MOBILE RESPONSIVE
+========================================================= */
+@media (max-width: 768px) {
+  .toast-container {
+    bottom: var(--spacing-md);
+    right: var(--spacing-md);
+    left: var(--spacing-md);
+  }
+
+  .toast {
+    max-width: 100%;
+  }
+
+  .emoji-picker {
+    width: 280px;
+  }
+
+  .emoji-grid {
+    grid-template-columns: repeat(7, 1fr);
+  }
+
+  .modal {
+    margin: 0 auto;
+  }
+}
+
+/* =========================================================
+   SPINNER (로딩)
+========================================================= */
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--color-brand);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* =========================================================
+   검색 결과 아이템
+========================================================= */
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  border-radius: var(--border-radius-sm);
+  transition: background-color var(--transition-fast);
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.search-result-item:hover {
+  background: var(--bg-hover);
+}
+
+.search-result-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.search-result-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-title mark {
+  background: var(--color-brand-light);
+  color: var(--color-brand);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.search-empty {
+  padding: var(--spacing-md);
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* =========================================================
+   모바일 블록 이동 배너
+========================================================= */
+.mobile-limit-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-warning);
+  color: #333;
+  text-align: center;
+  padding: var(--spacing-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  z-index: 900;
+  animation: slideUp 0.2s ease;
+}
+
+/* =========================================================
+   UTILITY
+========================================================= */
+.hidden {
+  display: none !important;
+}
+
+/* 브레드크럼 현재 페이지 */
+.breadcrumb-item-current {
+  color: var(--text-primary);
+  font-weight: 500;
+  cursor: default;
+}
+
+/* 버튼 비활성화 상태 */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
