@@ -1,7 +1,7 @@
 /**
  * editor.js — Editor.js 통합 + 커스텀 블록
  * 지원 블록: Paragraph, Header, Checklist, Quote, Delimiter,
- *             Toggle(커스텀), Callout(커스텀), Image(커스텀), PageLink(커스텀)
+ *             Toggle(커스텀), Callout(커스텀), Image(커스텀), ChildPage(커스텀)
  */
 
 const EditorManager = (() => {
@@ -404,7 +404,7 @@ const EditorManager = (() => {
   }
 
   /* =========================================================
-     커스텀 블록 — PAGE LINK
+     커스텀 블록 — CHILD PAGE
   ========================================================= */
   class PageLinkTool {
     static get toolbox() {
@@ -418,6 +418,7 @@ const EditorManager = (() => {
       this.data = data ? { ...data } : {};
       this.api  = api;
       this.readOnly = readOnly;
+      this._isCreating = false;
     }
 
     render() {
@@ -426,7 +427,7 @@ const EditorManager = (() => {
       if (this.data.pageId) {
         this._renderLink(wrapper, this.data.pageId);
       } else {
-        this._renderSelector(wrapper);
+        this._createChildPage(wrapper);
       }
 
       return wrapper;
@@ -453,57 +454,42 @@ const EditorManager = (() => {
       link.addEventListener('keydown', (e) => { if (e.key === 'Enter') navigate(); });
     }
 
-    _renderSelector(wrapper) {
-      const pages = Workspace.getAllPagesMeta();
-      const selector = document.createElement('div');
-      selector.className = 'page-link-selector';
+    async _createChildPage(wrapper) {
+      if (this._isCreating) return;
+      const parentId = Workspace.getCurrentPageId();
+      if (!parentId) {
+        wrapper.innerHTML = '<div class="page-link-block page-link-block--disabled">먼저 페이지를 선택하세요</div>';
+        return;
+      }
 
-      const header = document.createElement('div');
-      header.className = 'page-link-selector__header';
+      this._isCreating = true;
+      wrapper.innerHTML = `
+        <div class="page-link-block page-link-block--creating">
+          <span class="page-link-block__icon">📄</span>
+          <span class="page-link-block__title">하위 문서를 만드는 중...</span>
+        </div>
+      `;
 
-      const searchInput = document.createElement('input');
-      searchInput.className = 'page-link-selector__search';
-      searchInput.placeholder = '페이지 검색...';
-      searchInput.type = 'text';
-      header.appendChild(searchInput);
-
-      const list = document.createElement('ul');
-      list.className = 'page-link-selector__list';
-
-      const renderList = (filtered) => {
-        list.innerHTML = '';
-        if (!filtered.length) {
-          list.innerHTML = '<li class="page-link-selector__empty">페이지가 없습니다</li>';
+      try {
+        const result = await Workspace.createPage(parentId, { title: '새 하위 문서' });
+        if (!result) {
+          wrapper.innerHTML = '<div class="page-link-block page-link-block--disabled">하위 문서를 만들 수 없습니다</div>';
           return;
         }
-        filtered.forEach(page => {
-          const li = document.createElement('li');
-          li.className = 'page-link-selector__item';
-          li.innerHTML = `
-            <span class="page-link-selector__item-icon">${page.icon || '📄'}</span>
-            <span class="page-link-selector__item-title">${UI.escapeHtml(page.title || '제목 없음')}</span>
-          `;
-          li.addEventListener('click', () => {
-            this.data.pageId = page.id;
-            wrapper.innerHTML = '';
-            this._renderLink(wrapper, page.id);
-            Workspace.markDirty();
-          });
-          list.appendChild(li);
-        });
-      };
 
-      renderList(pages);
-
-      searchInput.addEventListener('input', () => {
-        const q = searchInput.value.toLowerCase();
-        const filtered = pages.filter(p => (p.title || '').toLowerCase().includes(q));
-        renderList(filtered);
-      });
-
-      selector.appendChild(header);
-      selector.appendChild(list);
-      wrapper.appendChild(selector);
+        this.data.pageId = result.meta.id;
+        this._renderLink(wrapper, result.meta.id);
+        if (Sidebar.expandPage) await Sidebar.expandPage(parentId);
+        else Sidebar.render();
+        Workspace.markDirty();
+        UI.toast('하위 문서가 생성됐습니다. 현재 페이지를 저장하면 연결이 유지됩니다.', 'success', 5000);
+      } catch (e) {
+        console.error('하위 문서 생성 실패:', e);
+        wrapper.innerHTML = '<div class="page-link-block page-link-block--disabled">하위 문서 생성 실패</div>';
+        UI.toast('하위 문서를 만드는 데 실패했습니다.', 'error');
+      } finally {
+        this._isCreating = false;
+      }
     }
 
     save(blockContent) {
@@ -646,7 +632,7 @@ const EditorManager = (() => {
     { name: '토글',       desc: '접기/펼치기 블록',    icon: '▶',  type: 'toggle'    },
     { name: '콜아웃',     desc: '강조 박스 (7색)',     icon: '💬', type: 'callout'   },
     { name: '이미지',     desc: '이미지 첨부/붙여넣기', icon: '🖼️', type: 'image'    },
-    { name: '하위 문서',  desc: '다른 페이지 링크',    icon: '📄', type: 'pageLink'  },
+    { name: '하위 문서',  desc: '현재 페이지 아래 새 문서', icon: '📄', type: 'pageLink'  },
   ];
 
   // 슬래시 상태 변수 (함수 스코프로 분리)

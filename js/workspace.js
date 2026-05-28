@@ -116,8 +116,10 @@ const Workspace = (() => {
   /* =========================================================
      페이지 생성
   ========================================================= */
-  async function createPage(parentId = null) {
+  async function createPage(parentId = null, options = {}) {
     const id = UI.generateId();
+    const title = options.title || '제목 없음';
+    const icon = options.icon || '📄';
 
     // 깊이 제한 (최대 5단계)
     if (parentId) {
@@ -131,16 +133,16 @@ const Workspace = (() => {
     const now = new Date().toISOString();
     const meta = {
       id,
-      title: '제목 없음',
-      icon:  '📄',
+      title,
+      icon,
       parentId: parentId || null,
       children: [],
     };
 
     const pageData = {
       id,
-      title: '제목 없음',
-      icon:  '📄',
+      title,
+      icon,
       coverImageId: null,
       parentId: parentId || null,
       createdAt: now,
@@ -194,6 +196,22 @@ const Workspace = (() => {
 
     const existing = _pageCache[pageId] || {};
     const now = new Date().toISOString();
+
+    // 다른 기기에서 먼저 저장한 변경을 조용히 덮어쓰지 않도록 방어합니다.
+    // 로컬에서 마지막으로 읽은 updatedAt과 Drive의 현재 updatedAt이 다르면 저장을 중단합니다.
+    try {
+      const remote = await Drive.readPage(pageId);
+      if (
+        remote?.updatedAt &&
+        existing?.updatedAt &&
+        remote.updatedAt !== existing.updatedAt
+      ) {
+        UI.toast('다른 기기에서 먼저 저장된 변경이 있습니다. 이 페이지를 다시 열어 확인한 뒤 저장해주세요.', 'warning', 9000);
+        return false;
+      }
+    } catch (e) {
+      console.warn('원격 변경 확인 실패:', e);
+    }
 
     const updated = {
       ...existing,

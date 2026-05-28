@@ -313,6 +313,19 @@
   transform: translateX(2px);
 }
 
+.page-link-block--creating,
+.page-link-block--disabled {
+  cursor: default;
+  color: var(--text-muted);
+}
+
+.page-link-block--creating:hover,
+.page-link-block--disabled:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-color);
+  transform: none;
+}
+
 .page-link-block__icon {
   font-size: 1rem;
   flex-shrink: 0;

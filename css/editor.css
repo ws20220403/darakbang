@@ -39,7 +39,8 @@
 }
 
 .ce-toolbar__actions {
-  right: -36px;
+  left: -44px;
+  right: auto;
 }
 
 .ce-toolbar__plus {
@@ -375,7 +376,8 @@ h3.ce-header {
   }
 
   .ce-toolbar__actions {
-    right: 0;
+    left: -4px;
+    right: auto;
   }
 
   h1.ce-header { font-size: 1.5rem; }

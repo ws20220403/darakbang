@@ -356,6 +356,13 @@ const Sidebar = (() => {
     }
   }
 
+  async function expandPage(pageId) {
+    if (!pageId) return;
+    _expandedIds.add(pageId);
+    await Workspace.setExpandedPages([..._expandedIds]);
+    render();
+  }
+
   /* =========================================================
      PUBLIC API
   ========================================================= */
@@ -365,6 +372,7 @@ const Sidebar = (() => {
     renderFavorites,
     renderPageTree,
     setActivePage,
+    expandPage,
     renderSearch,
   };
 })();
