@@ -39,10 +39,10 @@
 }
 
 .ce-toolbar__actions {
-  left: -64px;
+  left: -82px;
   right: auto;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 3px !important;
+  transform: none !important;
 }
 
 .ce-toolbar__plus {
@@ -138,6 +138,7 @@
   color: var(--text-primary);
   max-height: none !important;
   overflow: visible !important;
+  min-width: 270px;
 }
 
 .ce-popover__items,
@@ -320,7 +321,7 @@ h3.ce-header {
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow-xl);
-  width: 300px;
+  width: 340px;
   max-height: none;
   overflow-y: visible;
   z-index: 500;
@@ -346,7 +347,7 @@ h3.ce-header {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: 6px var(--spacing-md);
+  padding: 9px var(--spacing-md);
   cursor: pointer;
   transition: background-color var(--transition-fast);
 }
@@ -357,8 +358,8 @@ h3.ce-header {
 }
 
 .slash-popup-item-icon {
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
   background: var(--bg-input);
   border-radius: var(--border-radius-sm);
   display: flex;
@@ -395,8 +396,10 @@ h3.ce-header {
   }
 
   .ce-toolbar__actions {
-    left: -42px;
+    left: -48px;
     right: auto;
+    top: 3px !important;
+    transform: none !important;
   }
 
   h1.ce-header { font-size: 1.5rem; }

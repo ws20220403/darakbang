@@ -120,10 +120,7 @@ const Workspace = (() => {
     const id = UI.generateId();
     const title = options.title || '제목 없음';
     const icon = options.icon || '📄';
-    const parentPage = parentId ? _pageCache[parentId] : null;
-    const coverImageId = options.coverImageId !== undefined
-      ? options.coverImageId
-      : (parentPage?.coverImageId || null);
+    const coverImageId = parentId ? null : (options.coverImageId || null);
 
     // 깊이 제한 (최대 5단계)
     if (parentId) {
@@ -222,11 +219,10 @@ const Workspace = (() => {
       id:           pageId,
       title:        title || '제목 없음',
       icon:         icon  || '📄',
-      coverImageId: coverImageId !== undefined ? coverImageId : existing.coverImageId,
+      coverImageId: existing.parentId ? null : (coverImageId !== undefined ? coverImageId : existing.coverImageId),
       updatedAt:    now,
       editorData:   editorData,
     };
-    const coverChanged = existing.coverImageId !== updated.coverImageId;
 
     // workspace 메타 업데이트
     const meta = getPageMeta(pageId);
@@ -236,45 +232,12 @@ const Workspace = (() => {
     }
 
     await Drive.writePage(pageId, updated);
-    if (coverChanged) {
-      await _syncDescendantCovers(pageId, updated.coverImageId);
-    }
     await _saveWorkspace();
 
     _pageCache[pageId] = updated;
     _isDirty = false;
 
     return true;
-  }
-
-  async function _syncDescendantCovers(pageId, coverImageId) {
-    const children = getChildren(pageId);
-    for (const child of children) {
-      let childData = _pageCache[child.id];
-      if (!childData) {
-        try {
-          childData = await Drive.readPage(child.id);
-        } catch (e) {
-          console.warn('하위 문서 커버 동기화 로드 실패:', e);
-          continue;
-        }
-      }
-      if (!childData) continue;
-
-      const updatedChild = {
-        ...childData,
-        coverImageId: coverImageId || null,
-      };
-      _pageCache[child.id] = updatedChild;
-
-      try {
-        await Drive.writePage(child.id, updatedChild);
-      } catch (e) {
-        console.warn('하위 문서 커버 동기화 저장 실패:', e);
-      }
-
-      await _syncDescendantCovers(child.id, coverImageId);
-    }
   }
 
   /* =========================================================

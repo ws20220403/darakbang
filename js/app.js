@@ -278,20 +278,10 @@ const App = (() => {
     if (!pageId) return;
     if (pageId === Workspace.getCurrentPageId()) return;
 
-    // 미저장 확인
+    // 페이지 이동 시에는 경고 대신 자동 저장합니다. 저장 버튼 기능은 그대로 유지됩니다.
     if (Workspace.isDirty()) {
-      if (options.withinPage) {
-        const saved = await _savePage({ silent: true });
-        if (!saved) return;
-      } else {
-        const action = await UI.confirmUnsaved();
-        if (action === 'save') {
-          const saved = await _savePage();
-          if (!saved) return;
-        } else if (action === null) {
-          return; // 취소
-        }
-      }
+      const saved = await _savePage({ silent: true });
+      if (!saved) return;
       Workspace.markClean();
     }
 
@@ -344,13 +334,14 @@ const App = (() => {
     }
 
     // 커버 이미지 상태 초기화
-    _currentCoverImageId = pageData.coverImageId || null;
+    const isSubPage = !!pageData.parentId;
+    _currentCoverImageId = isSubPage ? null : (pageData.coverImageId || null);
     await _renderCover(_currentCoverImageId);
 
     // 커버 추가 버튼 (커버 없을 때만 표시)
     const btnAddCover = document.getElementById('btn-add-cover');
     if (btnAddCover) {
-      btnAddCover.classList.toggle('hidden', !!_currentCoverImageId);
+      btnAddCover.classList.toggle('hidden', isSubPage || !!_currentCoverImageId);
     }
 
     // 브레드크럼

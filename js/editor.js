@@ -449,7 +449,7 @@ const EditorManager = (() => {
       `;
 
       const link = wrapper.querySelector('.page-link-block');
-      const navigate = () => App.navigateToPage(pageId, { withinPage: true });
+      const navigate = () => App.navigateToPage(pageId);
       link.addEventListener('click', navigate);
       link.addEventListener('keydown', (e) => { if (e.key === 'Enter') navigate(); });
     }
@@ -749,7 +749,7 @@ const EditorManager = (() => {
       const range = sel.getRangeAt(0).cloneRange();
       range.collapse(true);
       const rect = range.getBoundingClientRect();
-      const popupW = 300;
+      const popupW = 340;
       let left = rect.left;
       let top  = rect.bottom + 8;
       if (left + popupW > window.innerWidth - 8) left = window.innerWidth - popupW - 8;
