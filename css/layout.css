@@ -407,10 +407,13 @@ body {
 ========================================================= */
 .page-cover {
   position: relative;
-  width: 100%;
-  height: 200px;
+  width: min(var(--editor-max-width), calc(100% - var(--editor-padding) * 2));
+  max-width: var(--editor-max-width);
+  height: var(--cover-height, 320px);
+  margin: var(--spacing-xl) auto 0;
   overflow: hidden;
-  group: true;
+  border-radius: var(--border-radius-md);
+  background: var(--bg-input);
 }
 
 .page-cover-img {
@@ -580,6 +583,11 @@ body {
 
   .page-header {
     padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-sm);
+  }
+
+  .page-cover {
+    width: calc(100% - var(--spacing-lg) * 2);
+    margin-top: var(--spacing-lg);
   }
 
   .page-title-input {

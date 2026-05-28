@@ -449,7 +449,7 @@ const EditorManager = (() => {
       `;
 
       const link = wrapper.querySelector('.page-link-block');
-      const navigate = () => App.navigateToPage(pageId);
+      const navigate = () => App.navigateToPage(pageId, { withinPage: true });
       link.addEventListener('click', navigate);
       link.addEventListener('keydown', (e) => { if (e.key === 'Enter') navigate(); });
     }
@@ -749,16 +749,19 @@ const EditorManager = (() => {
       const range = sel.getRangeAt(0).cloneRange();
       range.collapse(true);
       const rect = range.getBoundingClientRect();
-      const popupW = 280;
+      const popupW = 300;
       let left = rect.left;
       let top  = rect.bottom + 8;
       if (left + popupW > window.innerWidth - 8) left = window.innerWidth - popupW - 8;
-      if (top + 360 > window.innerHeight) top = rect.top - 360;
+      popup.classList.remove('hidden');
+
+      const popupH = popup.offsetHeight || 420;
+      if (top + popupH > window.innerHeight - 8) top = rect.top - popupH - 8;
       popup.style.left = `${Math.max(8, left)}px`;
       popup.style.top  = `${Math.max(8, top)}px`;
+    } else {
+      popup.classList.remove('hidden');
     }
-
-    popup.classList.remove('hidden');
   }
 
   function _closeSlashPopup() {

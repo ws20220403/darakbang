@@ -13,6 +13,7 @@ const App = (() => {
 
   let _currentCoverImageId = null;
   let _globalEventsBound   = false;  // 중복 바인딩 방지
+  let _coverResizeHandler  = null;
 
   /* =========================================================
      앱 시작
@@ -273,18 +274,23 @@ const App = (() => {
   /* =========================================================
      페이지 탐색
   ========================================================= */
-  async function navigateToPage(pageId) {
+  async function navigateToPage(pageId, options = {}) {
     if (!pageId) return;
     if (pageId === Workspace.getCurrentPageId()) return;
 
     // 미저장 확인
     if (Workspace.isDirty()) {
-      const action = await UI.confirmUnsaved();
-      if (action === 'save') {
-        const saved = await _savePage();
+      if (options.withinPage) {
+        const saved = await _savePage({ silent: true });
         if (!saved) return;
-      } else if (action === null) {
-        return; // 취소
+      } else {
+        const action = await UI.confirmUnsaved();
+        if (action === 'save') {
+          const saved = await _savePage();
+          if (!saved) return;
+        } else if (action === null) {
+          return; // 취소
+        }
       }
       Workspace.markClean();
     }
@@ -372,6 +378,7 @@ const App = (() => {
       const blobUrl = await EditorManager.loadCoverImage(fileId);
       if (blobUrl) {
         coverImg.src = blobUrl;
+        _fitCoverToImage(coverEl, coverImg);
         coverEl.classList.remove('hidden');
       } else {
         coverEl.classList.add('hidden');
@@ -380,6 +387,22 @@ const App = (() => {
       console.warn('커버 이미지 로드 실패:', e);
       coverEl.classList.add('hidden');
     }
+  }
+
+  function _fitCoverToImage(coverEl, coverImg) {
+    const update = () => {
+      const width = coverEl.clientWidth || 0;
+      if (!width || !coverImg.naturalWidth || !coverImg.naturalHeight) return;
+      const naturalHeight = width * (coverImg.naturalHeight / coverImg.naturalWidth);
+      const maxHeight = width * (4 / 6);
+      coverEl.style.setProperty('--cover-height', `${Math.min(naturalHeight, maxHeight)}px`);
+    };
+
+    coverImg.onload = update;
+    if (_coverResizeHandler) window.removeEventListener('resize', _coverResizeHandler);
+    _coverResizeHandler = update;
+    window.addEventListener('resize', _coverResizeHandler);
+    requestAnimationFrame(update);
   }
 
   function _triggerCoverUpload() {
@@ -470,7 +493,7 @@ const App = (() => {
   /* =========================================================
      페이지 저장
   ========================================================= */
-  async function _savePage() {
+  async function _savePage(options = {}) {
     const pageId = Workspace.getCurrentPageId();
     if (!pageId) return false;
 
@@ -494,7 +517,7 @@ const App = (() => {
       const saved = await Workspace.savePage(pageId, editorData, title, icon, _currentCoverImageId);
 
       if (saved) {
-        UI.toast('저장됐습니다.', 'success');
+        if (!options.silent) UI.toast('저장됐습니다.', 'success');
         Sidebar.render();
         _renderBreadcrumb(pageId);
         const mobileTitleEl = document.getElementById('mobile-page-title');
