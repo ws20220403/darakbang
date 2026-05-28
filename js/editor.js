@@ -553,14 +553,14 @@ const EditorManager = (() => {
         toggle: {
           class: ToggleTool,
         },
-        callout: {
-          class: CalloutTool,
-        },
         image: {
           class: DarakImageTool,
         },
         pageLink: {
           class: PageLinkTool,
+        },
+        callout: {
+          class: CalloutTool,
         },
       },
 
@@ -630,9 +630,9 @@ const EditorManager = (() => {
     { name: '인용구',     desc: '텍스트 인용 블록',    icon: '"',  type: 'quote'     },
     { name: '구분선',     desc: '수평 구분선',         icon: '—',  type: 'delimiter' },
     { name: '토글',       desc: '접기/펼치기 블록',    icon: '▶',  type: 'toggle'    },
-    { name: '콜아웃',     desc: '강조 박스 (7색)',     icon: '💬', type: 'callout'   },
     { name: '이미지',     desc: '이미지 첨부/붙여넣기', icon: '🖼️', type: 'image'    },
     { name: '하위 문서',  desc: '현재 페이지 아래 새 문서', icon: '📄', type: 'pageLink'  },
+    { name: '콜아웃',     desc: '강조 박스 (7색)',     icon: '💬', type: 'callout'   },
   ];
 
   // 슬래시 상태 변수 (함수 스코프로 분리)
