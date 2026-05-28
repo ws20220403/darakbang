@@ -42,13 +42,47 @@
 .ce-toolbar__content {
   pointer-events: none !important;
   border: 0 !important;
+  border-color: transparent !important;
   box-shadow: none !important;
   outline: 0 !important;
   background: transparent !important;
 }
 
+.ce-toolbar,
+.ce-toolbar::before,
+.ce-toolbar::after,
 .ce-toolbar__content::before,
 .ce-toolbar__content::after {
+  content: none !important;
+  border: 0 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background: transparent !important;
+}
+
+.ce-toolbar::before,
+.ce-toolbar::after,
+.ce-toolbar__content::before,
+.ce-toolbar__content::after {
+  display: none !important;
+}
+
+.ce-block--focused,
+.ce-block--selected,
+.ce-block--focused .ce-block__content,
+.ce-block--selected .ce-block__content {
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+.ce-block--focused::before,
+.ce-block--focused::after,
+.ce-block--selected::before,
+.ce-block--selected::after,
+.ce-block__content::before,
+.ce-block__content::after {
   display: none !important;
   content: none !important;
 }
