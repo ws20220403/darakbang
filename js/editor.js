@@ -662,6 +662,22 @@ const EditorManager = (() => {
           outline: 0 !important;
           background-image: none !important;
         }
+
+        .codex-editor .ce-popover:not(.ce-popover--opened),
+        .codex-editor .ce-settings:not(.ce-settings--opened),
+        .codex-editor .ce-inline-toolbar:not(.ce-inline-toolbar--showed) {
+          width: 0 !important;
+          height: 0 !important;
+          min-width: 0 !important;
+          min-height: 0 !important;
+          max-height: 0 !important;
+          padding: 0 !important;
+          border: 0 !important;
+          box-shadow: none !important;
+          outline: 0 !important;
+          background: transparent !important;
+          overflow: hidden !important;
+        }
       `;
       document.head.appendChild(style);
     }
