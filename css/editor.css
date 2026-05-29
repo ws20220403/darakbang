@@ -25,12 +25,18 @@
 /* Block wrapper */
 .ce-block {
   padding: 2px 0;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
 }
 
 .ce-block__content {
   max-width: 100%;
   margin: 0;
   position: relative;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
 }
 
 /* Toolbar */
@@ -94,11 +100,68 @@
   content: none !important;
 }
 
+.codex-editor .ce-block::before,
+.codex-editor .ce-block::after,
+.codex-editor .ce-block__content::before,
+.codex-editor .ce-block__content::after,
+.codex-editor .ce-block--focused::before,
+.codex-editor .ce-block--focused::after,
+.codex-editor .ce-block--selected::before,
+.codex-editor .ce-block--selected::after,
+.codex-editor .ce-block--drop-target::before,
+.codex-editor .ce-block--drop-target::after,
+.codex-editor .ce-block--drop-target .ce-block__content::before,
+.codex-editor .ce-block--drop-target .ce-block__content::after {
+  display: none !important;
+  content: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background: transparent !important;
+}
+
+.codex-editor .ce-block,
+.codex-editor .ce-block--focused,
+.codex-editor .ce-block--selected,
+.codex-editor .ce-block--drop-target,
+.codex-editor .ce-block__content {
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background-image: none !important;
+}
+
+.codex-editor-overlay__rectangle {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background: transparent !important;
+}
+
 .ce-toolbar__actions {
   left: -82px;
   right: auto;
   top: 3px !important;
   transform: none !important;
+  display: inline-flex !important;
+  width: auto !important;
+  max-width: max-content !important;
+  min-width: 0 !important;
+  height: auto !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+.ce-toolbar__actions::before,
+.ce-toolbar__actions::after {
+  display: none !important;
+  content: none !important;
 }
 
 .ce-toolbar__plus {
@@ -236,6 +299,7 @@
   line-height: 1.75;
   color: var(--text-primary);
   padding: 2px 0;
+  min-height: calc(1.75em + 4px);
 }
 
 .ce-block [contenteditable="true"]:focus,
@@ -247,6 +311,12 @@
 
 .ce-paragraph[data-placeholder]::before {
   color: var(--color-placeholder);
+}
+
+.codex-editor__redactor [contenteditable]:empty::after,
+.ce-paragraph:empty::after {
+  content: none !important;
+  display: none !important;
 }
 
 /* =========================================================
