@@ -197,6 +197,18 @@
   color: var(--text-primary);
 }
 
+.ce-settings:not(.ce-settings--opened) {
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  overflow: hidden !important;
+}
+
 .ce-settings__button {
   color: var(--text-secondary);
 }
@@ -213,6 +225,17 @@
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
+}
+
+.ce-inline-toolbar:not(.ce-inline-toolbar--showed) {
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
 .ce-inline-toolbar__buttons {
@@ -260,6 +283,19 @@
   max-height: 360px !important;
   overflow: hidden !important;
   min-width: 270px;
+}
+
+.ce-popover:not(.ce-popover--opened) {
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  overflow: hidden !important;
 }
 
 .ce-popover__items,
