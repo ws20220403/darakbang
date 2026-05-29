@@ -1,0 +1,544 @@
+/* editor.css — 에디터 영역 스타일 */
+
+/* =========================================================
+   EDITOR.JS CONTAINER
+========================================================= */
+.editorjs-container {
+  max-width: var(--editor-max-width);
+  margin: 0 auto;
+  padding: 0 var(--editor-padding) var(--spacing-3xl);
+  min-height: 300px;
+  position: relative;
+}
+
+/* Editor.js 기본 스타일 재정의 */
+.codex-editor {
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+.codex-editor__redactor {
+  padding: 0 !important;
+  padding-bottom: var(--spacing-2xl) !important;
+}
+
+/* Block wrapper */
+.ce-block {
+  padding: 2px 0;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+.ce-block__content {
+  max-width: 100%;
+  margin: 0;
+  position: relative;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+/* Toolbar */
+.ce-toolbar {
+  z-index: 50;
+  pointer-events: none;
+}
+
+.ce-toolbar__content {
+  display: contents !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  max-width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background: transparent !important;
+}
+
+.ce-toolbar,
+.ce-toolbar::before,
+.ce-toolbar::after,
+.ce-toolbar__content::before,
+.ce-toolbar__content::after {
+  content: none !important;
+  border: 0 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background: transparent !important;
+}
+
+.ce-toolbar::before,
+.ce-toolbar::after,
+.ce-toolbar__content::before,
+.ce-toolbar__content::after {
+  display: none !important;
+}
+
+.ce-block--focused,
+.ce-block--selected,
+.ce-block--focused .ce-block__content,
+.ce-block--selected .ce-block__content {
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+.ce-block--focused::before,
+.ce-block--focused::after,
+.ce-block--selected::before,
+.ce-block--selected::after,
+.ce-block__content::before,
+.ce-block__content::after {
+  display: none !important;
+  content: none !important;
+}
+
+.codex-editor .ce-block::before,
+.codex-editor .ce-block::after,
+.codex-editor .ce-block__content::before,
+.codex-editor .ce-block__content::after,
+.codex-editor .ce-block--focused::before,
+.codex-editor .ce-block--focused::after,
+.codex-editor .ce-block--selected::before,
+.codex-editor .ce-block--selected::after,
+.codex-editor .ce-block--drop-target::before,
+.codex-editor .ce-block--drop-target::after,
+.codex-editor .ce-block--drop-target .ce-block__content::before,
+.codex-editor .ce-block--drop-target .ce-block__content::after {
+  display: none !important;
+  content: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background: transparent !important;
+}
+
+.codex-editor .ce-block,
+.codex-editor .ce-block--focused,
+.codex-editor .ce-block--selected,
+.codex-editor .ce-block--drop-target,
+.codex-editor .ce-block__content {
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background-image: none !important;
+}
+
+.codex-editor-overlay__rectangle {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background: transparent !important;
+}
+
+.ce-toolbar__actions {
+  left: -82px;
+  right: auto;
+  top: 3px !important;
+  transform: none !important;
+  display: inline-flex !important;
+  width: auto !important;
+  max-width: max-content !important;
+  min-width: 0 !important;
+  height: auto !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+.ce-toolbar__actions::before,
+.ce-toolbar__actions::after {
+  display: none !important;
+  content: none !important;
+}
+
+.ce-toolbar__plus {
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  pointer-events: auto;
+}
+
+.ce-toolbar__plus:hover {
+  color: var(--text-primary);
+  background: var(--bg-active);
+}
+
+.ce-toolbar__settings-btn {
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  pointer-events: auto;
+}
+
+.ce-toolbar__settings-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-active);
+}
+
+/* Block settings */
+.ce-settings {
+  background: var(--bg-modal);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-primary);
+}
+
+.ce-settings__button {
+  color: var(--text-secondary);
+}
+
+.ce-settings__button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Inline toolbar */
+.ce-inline-toolbar {
+  background: var(--bg-modal);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.ce-inline-toolbar__buttons {
+  padding: 4px;
+}
+
+.ce-inline-tool {
+  color: var(--text-secondary);
+  border-radius: var(--border-radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.ce-inline-tool:hover,
+.ce-inline-tool--active {
+  color: var(--color-brand);
+  background: var(--color-brand-dim);
+}
+
+/* Conversion toolbar */
+.ce-conversion-toolbar {
+  background: var(--bg-modal);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-primary);
+}
+
+.ce-conversion-tool {
+  color: var(--text-secondary);
+}
+
+.ce-conversion-tool:hover,
+.ce-conversion-tool--focused {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Popover */
+.ce-popover {
+  background: var(--bg-modal);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-primary);
+  max-height: 360px !important;
+  overflow: hidden !important;
+  min-width: 270px;
+}
+
+.ce-popover__items,
+.ce-popover__items-wrapper {
+  max-height: 300px !important;
+  overflow-y: auto !important;
+  scrollbar-width: thin;
+}
+
+.ce-popover__item {
+  color: var(--text-secondary);
+}
+
+.ce-popover__item:hover,
+.ce-popover__item--active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ce-popover__item-icon {
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+
+.ce-popover-search__input {
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+}
+
+/* =========================================================
+   PARAGRAPH BLOCK
+========================================================= */
+.ce-paragraph {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--text-primary);
+  padding: 2px 0;
+  min-height: calc(1.75em + 4px);
+}
+
+.ce-block [contenteditable="true"]:focus,
+.ce-block [contenteditable="true"]:focus-visible,
+.ce-paragraph:focus,
+.ce-paragraph:focus-visible {
+  outline: none !important;
+}
+
+.ce-paragraph[data-placeholder]::before {
+  color: var(--color-placeholder);
+}
+
+.codex-editor__redactor [contenteditable]:empty::after,
+.ce-paragraph:empty::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* =========================================================
+   HEADER BLOCK
+========================================================= */
+.ce-header {
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  padding: 2px 0;
+}
+
+h1.ce-header {
+  font-size: 1.875rem;
+  margin-top: var(--spacing-lg);
+}
+
+h2.ce-header {
+  font-size: 1.45rem;
+  margin-top: var(--spacing-md);
+}
+
+h3.ce-header {
+  font-size: 1.2rem;
+  margin-top: var(--spacing-sm);
+}
+
+/* =========================================================
+   CHECKLIST BLOCK
+========================================================= */
+.cdx-checklist {
+  padding: 2px 0;
+}
+
+.cdx-checklist__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: 4px 0;
+}
+
+.cdx-checklist__item-checkbox {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 3px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--bg-main);
+  position: relative;
+}
+
+.cdx-checklist__item-checkbox:checked {
+  background: var(--color-brand);
+  border-color: var(--color-brand);
+}
+
+.cdx-checklist__item-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  width: 8px;
+  height: 5px;
+  border-left: 2px solid white;
+  border-bottom: 2px solid white;
+  transform: rotate(-45deg);
+}
+
+.cdx-checklist__item-text {
+  flex: 1;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.cdx-checklist__item--checked .cdx-checklist__item-text {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+/* =========================================================
+   QUOTE BLOCK
+========================================================= */
+.cdx-quote {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-left: 3px solid var(--quote-border);
+  background: var(--quote-bg);
+  border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
+  margin: var(--spacing-sm) 0;
+}
+
+.cdx-quote__text {
+  font-size: 1.05rem;
+  font-style: italic;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.cdx-quote__caption {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-top: var(--spacing-xs);
+}
+
+/* =========================================================
+   DELIMITER BLOCK
+========================================================= */
+.ce-delimiter {
+  padding: var(--spacing-md) 0;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  text-align: initial !important;
+}
+
+.ce-delimiter:before,
+.ce-delimiter::before {
+  content: '' !important;
+  display: block !important;
+  width: 100% !important;
+  height: 1px !important;
+  margin: 0 !important;
+  background: var(--border-color) !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  letter-spacing: 0 !important;
+}
+
+/* =========================================================
+   SLASH COMMAND POPUP
+========================================================= */
+.slash-popup {
+  position: fixed;
+  background: var(--bg-modal);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-xl);
+  width: 320px;
+  max-height: 360px;
+  overflow-y: auto;
+  z-index: 500;
+  animation: slideUp 0.15s ease;
+  scrollbar-width: thin;
+}
+
+.slash-popup-header {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.slash-popup-list {
+  padding: var(--spacing-xs) 0;
+}
+
+.slash-popup-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.slash-popup-item:hover,
+.slash-popup-item.selected {
+  background-color: var(--bg-hover);
+}
+
+.slash-popup-item-icon {
+  width: 32px;
+  height: 32px;
+  background: var(--bg-input);
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.slash-popup-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.slash-popup-item-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.slash-popup-item-desc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+/* =========================================================
+   MOBILE EDITOR ADJUSTMENTS
+========================================================= */
+@media (max-width: 768px) {
+  .editorjs-container {
+    padding: 0 var(--spacing-lg) var(--spacing-2xl);
+  }
+
+  .ce-toolbar__actions {
+    left: -48px;
+    right: auto;
+    top: 3px !important;
+    transform: none !important;
+  }
+
+  h1.ce-header { font-size: 1.5rem; }
+  h2.ce-header { font-size: 1.25rem; }
+  h3.ce-header { font-size: 1.1rem; }
+}
