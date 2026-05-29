@@ -637,6 +637,10 @@ const EditorManager = (() => {
         .codex-editor .ce-toolbar__content::after,
         .codex-editor .ce-toolbar__actions::before,
         .codex-editor .ce-toolbar__actions::after,
+        .codex-editor [data-placeholder-active]:empty:focus::before,
+        .codex-editor [data-placeholder-active][data-empty="true"]:focus::before,
+        .codex-editor [data-placeholder]:empty:focus::before,
+        .codex-editor [data-placeholder][data-empty="true"]:focus::before,
         .codex-editor__redactor [contenteditable]:empty::after,
         .ce-paragraph:empty::after,
         .codex-editor-overlay__rectangle {
