@@ -10,6 +10,7 @@ const EditorManager = (() => {
   let _currentPageId = null;
   let _slashPopupOpen = false;
   let _blobUrlCache = {};   // fileId → blobUrl
+  let _chromeGuardObserver = null;
 
   /* =========================================================
      커스텀 블록 — TOGGLE
@@ -506,6 +507,7 @@ const EditorManager = (() => {
   ========================================================= */
   function init(pageData) {
     _currentPageId = pageData.id;
+    _installEditorChromeGuard();
 
     // 기존 에디터 파괴 (비동기 완료 보장)
     if (_editor) {
@@ -515,6 +517,7 @@ const EditorManager = (() => {
 
     const holder = document.getElementById('editorjs');
     holder.innerHTML = '';
+    _clearDropTargetChrome(holder);
 
     _editor = new EditorJS({
       holder: 'editorjs',
@@ -616,6 +619,73 @@ const EditorManager = (() => {
     });
 
     return _editor;
+  }
+
+  /* =========================================================
+     Editor.js 기본 드롭 가이드 제거
+  ========================================================= */
+  function _installEditorChromeGuard() {
+    if (!document.getElementById('darakbang-editor-chrome-guard')) {
+      const style = document.createElement('style');
+      style.id = 'darakbang-editor-chrome-guard';
+      style.textContent = `
+        .codex-editor .ce-block--drop-target .ce-block__content::before,
+        .codex-editor .ce-block--drop-target .ce-block__content::after,
+        .codex-editor .ce-block__content::before,
+        .codex-editor .ce-block__content::after,
+        .codex-editor .ce-toolbar__content::before,
+        .codex-editor .ce-toolbar__content::after,
+        .codex-editor .ce-toolbar__actions::before,
+        .codex-editor .ce-toolbar__actions::after,
+        .codex-editor__redactor [contenteditable]:empty::after,
+        .ce-paragraph:empty::after,
+        .codex-editor-overlay__rectangle {
+          display: none !important;
+          content: none !important;
+          width: 0 !important;
+          height: 0 !important;
+          border: 0 !important;
+          box-shadow: none !important;
+          outline: 0 !important;
+          background: transparent !important;
+          background-image: none !important;
+        }
+
+        .codex-editor .ce-block,
+        .codex-editor .ce-block__content {
+          border: 0 !important;
+          box-shadow: none !important;
+          outline: 0 !important;
+          background-image: none !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    const holder = document.getElementById('editorjs');
+    if (!holder || _chromeGuardObserver) return;
+
+    _chromeGuardObserver = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type !== 'attributes' || mutation.attributeName !== 'class') continue;
+        const target = mutation.target;
+        if (target instanceof Element && target.classList.contains('ce-block--drop-target')) {
+          target.classList.remove('ce-block--drop-target');
+        }
+      }
+    });
+
+    _chromeGuardObserver.observe(holder, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+  }
+
+  function _clearDropTargetChrome(root = document) {
+    root.querySelectorAll?.('.ce-block--drop-target').forEach((el) => {
+      el.classList.remove('ce-block--drop-target');
+    });
   }
 
   /* =========================================================
