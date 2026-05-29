@@ -313,6 +313,14 @@
   color: var(--color-placeholder);
 }
 
+.codex-editor [data-placeholder-active]:empty:focus::before,
+.codex-editor [data-placeholder-active][data-empty="true"]:focus::before,
+.codex-editor [data-placeholder]:empty:focus::before,
+.codex-editor [data-placeholder][data-empty="true"]:focus::before {
+  content: none !important;
+  display: none !important;
+}
+
 .codex-editor__redactor [contenteditable]:empty::after,
 .ce-paragraph:empty::after {
   content: none !important;
