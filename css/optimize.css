@@ -1,0 +1,206 @@
+/* optimize.css — UI/UX 최적화 & 텍스트 잘림 방지 (마지막 로드)
+   원칙: "칸보다 글씨가 커서 잘리는 일"이 절대 없도록 고정 높이를 최소 높이로,
+   긴 문자열은 줄바꿈으로, 한글 줄간격에 여유를 둔다. */
+
+/* =========================================================
+   1) 고정 height → min-height
+   (글자 크기가 커지거나 줄이 늘어도 칸이 함께 늘어나 잘리지 않음)
+========================================================= */
+.sidebar-header { height: auto; min-height: 52px; }
+.mobile-topbar  { height: auto; min-height: 52px; }
+.page-toolbar   { height: auto; min-height: 48px; }
+.icon-btn       { min-width: 30px; min-height: 30px; height: auto; }
+
+/* =========================================================
+   2) 한글 줄간격 여유 (제목류 위·아래 잘림 방지)
+========================================================= */
+.page-title-input { line-height: 1.3; min-height: 1.4em; }
+.codex-editor .ce-header { line-height: 1.35; }
+.workspace-name, .user-name, .user-email,
+.nav-item-title, .breadcrumb-item, .mobile-topbar-title { line-height: 1.45; }
+
+/* =========================================================
+   3) 긴 문자열(URL·띄어쓰기 없는 한글)도 칸을 넘지 않고 줄바꿈
+========================================================= */
+.codex-editor .ce-paragraph,
+.codex-editor .ce-header,
+.cdx-quote__text, .cdx-quote__caption,
+.callout-block__text, .toggle-block__title, .toggle-block__inner,
+.cdx-checklist__item-text, .cdx-nested-list__item,
+.page-title-input, .image-block__caption {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* =========================================================
+   4) 추가 메뉴 항목: 절대 잘리지 않게 (말줄임 제거 → 줄바꿈 허용)
+========================================================= */
+.ce-toolbox .ce-popover-item__title {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  line-height: 1.25;
+  word-break: keep-all;
+}
+.ce-toolbox .ce-popover-item {
+  align-items: center;
+  min-height: 38px;
+  height: auto;
+}
+
+/* =========================================================
+   5) 목차(TOC) 항목도 잘림 대신 줄바꿈
+========================================================= */
+.toc-block__item {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+/* =========================================================
+   6) 작은 글씨 가독성 / 대비 보정 (라이트 테마 한정 — 다크는 그대로)
+========================================================= */
+.demo-badge { font-size: 0.64rem; line-height: 1.5; }
+[data-theme="light"] {
+  --text-muted: #8a8a8a;          /* #999 → 약간 진하게(대비↑) */
+  --color-placeholder: #b4b4b2;   /* 너무 흐린 플레이스홀더 보정 */
+}
+
+/* =========================================================
+   7) 버튼/메뉴 항목 최소 터치 영역 (사용성)
+========================================================= */
+.btn-primary, .btn-secondary, .btn-danger { min-height: 38px; }
+.context-menu-item { min-height: 34px; }
+.slash-popup-item, .search-result-item { min-height: 36px; }
+
+/* =========================================================
+   8) 모달이 작은 화면에서 세로로 넘칠 때 스크롤 허용(잘림 방지)
+========================================================= */
+.modal { max-height: 90vh; overflow-y: auto; }
+
+/* =========================================================
+   9) 로그인 — 구글 연결 설정 텍스트 버튼
+========================================================= */
+.btn-text-link {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 6px;
+  font-size: 0.85rem;
+  color: #6a6a6a;
+  background: none;
+  border-radius: var(--border-radius-sm);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+.btn-text-link:hover { color: var(--color-brand); background: rgba(0,0,0,0.04); }
+[data-theme="dark"] .btn-text-link { color: #b8b8b6; }
+[data-theme="dark"] .btn-text-link:hover { background: rgba(255,255,255,0.06); }
+
+/* =========================================================
+   10) 구글 설정 모달 — 단계 안내
+========================================================= */
+.gsetup-steps {
+  list-style: decimal;
+  margin: 4px 0 14px;
+  padding-left: 20px;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+.gsetup-steps li { margin-bottom: 6px; }
+.gsetup-steps a { color: var(--color-brand); text-decoration: underline; }
+.gsetup-steps code {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 1px 6px;
+  word-break: break-all;
+  color: var(--text-primary);
+}
+
+/* =========================================================
+   11) 노트 본문 폭 — PC는 넓게, 화면이 좁아지면 가변, 모바일은 꽉 차게
+   (v1 버그: 컨테이너 720 - 좌우패딩 96*2 = 본문 528px로 좁고 제목칸 720과 어긋남)
+========================================================= */
+:root {
+  --editor-max-width: 1040px;  /* 본문 글 너비(거터 제외) — 넓게 */
+  --editor-padding: 80px;      /* 좌우 거터(+, ⠿ 손잡이가 본문과 안 겹치게 충분히) */
+}
+
+/* + / ⠿ 손잡이가 본문 텍스트와 겹치던 문제 수정:
+   (1) .ce-toolbar__content 를 display:contents 로 만들어 손잡이 기준을 본문 왼쪽(.ce-toolbar)으로 정렬
+   (2) 손잡이 묶음을 본문 왼쪽 거터로 8px 띄워 이동 */
+.codex-editor .ce-toolbar__content {
+  display: contents !important;
+}
+.codex-editor .ce-toolbar__actions {
+  left: 0 !important;
+  right: auto !important;
+  transform: translateX(calc(-100% - 8px)) !important;
+}
+/* 본문 컨테이너를 제목칸과 같은 폭으로 맞춰 정렬 일치 + 본문 = max-width */
+.editorjs-container {
+  max-width: calc(var(--editor-max-width) + var(--editor-padding) * 2);
+  padding-left: var(--editor-padding);
+  padding-right: var(--editor-padding);
+}
+@media (max-width: 1100px) { :root { --editor-padding: 40px; } }
+@media (max-width: 768px) {
+  :root { --editor-padding: 16px; }
+  .editorjs-container { max-width: 100%; }
+}
+
+/* =========================================================
+   12) 로그인 — "로그인 상태 유지" 체크박스
+========================================================= */
+.login-stay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 12px 0 2px;
+  font-size: 0.85rem;
+  color: #5f5f5f;
+  cursor: pointer;
+  user-select: none;
+}
+.login-stay input { width: 15px; height: 15px; accent-color: var(--color-brand); cursor: pointer; }
+[data-theme="dark"] .login-stay { color: #b8b8b6; }
+
+/* =========================================================
+   13) 상단 경로(breadcrumb) 제목 — 글자 중간 잘림 대신 깔끔한 말줄임
+========================================================= */
+.breadcrumb { min-width: 0; overflow: hidden; }
+.breadcrumb-item { max-width: 44vw; min-width: 0; }
+.breadcrumb-item-current { max-width: 56vw; }
+.breadcrumb-item .breadcrumb-icon { flex-shrink: 0; }
+.breadcrumb-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* =========================================================
+   14) 구분선 — 플러그인 "***"가 회색 박스에 갇혀 깨져 보이던 것 →
+       깔끔한 가로선으로 (별표/회색배경 제거)
+========================================================= */
+.codex-editor .ce-delimiter {
+  padding: 20px 0 !important;
+  line-height: normal !important;
+}
+.codex-editor .ce-delimiter::before {
+  content: '' !important;
+  display: block !important;
+  width: 100% !important;
+  height: 0 !important;
+  border-top: 1px solid var(--border-color) !important;
+  background: none !important;
+  background-color: transparent !important;
+  font-size: 0 !important;
+}

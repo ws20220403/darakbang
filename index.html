@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko" data-theme="light">
 <head>
   <meta charset="UTF-8" />
@@ -12,21 +12,25 @@
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
   <!-- CSS -->
-  <link rel="stylesheet" href="css/reset.css?v=20260529-1" />
-  <link rel="stylesheet" href="css/variables.css?v=20260529-1" />
-  <link rel="stylesheet" href="css/layout.css?v=20260529-1" />
-  <link rel="stylesheet" href="css/sidebar.css?v=20260529-1" />
-  <link rel="stylesheet" href="css/editor.css?v=20260529-1" />
-  <link rel="stylesheet" href="css/blocks.css?v=20260529-1" />
-  <link rel="stylesheet" href="css/components.css?v=20260529-1" />
+  <link rel="stylesheet" href="css/reset.css?v=20260603-1" />
+  <link rel="stylesheet" href="css/variables.css?v=20260603-1" />
+  <link rel="stylesheet" href="css/layout.css?v=20260603-1" />
+  <link rel="stylesheet" href="css/sidebar.css?v=20260603-1" />
+  <link rel="stylesheet" href="css/editor.css?v=20260603-1" />
+  <link rel="stylesheet" href="css/blocks.css?v=20260603-1" />
+  <link rel="stylesheet" href="css/components.css?v=20260603-1" />
+  <link rel="stylesheet" href="css/optimize.css?v=20260603-1" />
 
-  <!-- Editor.js CDN -->
+  <!-- Editor.js + 플러그인 (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.30.6/dist/editorjs.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@2.8.7/dist/header.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/nested-list@1.4.3/dist/nested-list.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/checklist@1.6.0/dist/checklist.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/code@2.9.4/dist/code.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@editorjs/table@2.4.5/dist/table.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/delimiter@1.4.2/dist/delimiter.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@2.7.6/dist/quote.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/inline-code@1.5.1/dist/inline-code.umd.min.js"></script>
@@ -59,9 +63,24 @@
         </svg>
         구글 계정으로 로그인
       </button>
+
+      <label class="login-stay">
+        <input type="checkbox" id="chk-stay" checked />
+        <span>로그인 상태 유지</span>
+      </label>
+
+      <div class="login-divider"><span>또는</span></div>
+
+      <button id="btn-demo-login" class="btn-demo-login" aria-label="데모로 둘러보기">
+        <span class="btn-demo-login__icon" aria-hidden="true">✨</span>
+        데모로 둘러보기 <span class="btn-demo-login__sub">(로그인 없이)</span>
+      </button>
+
+      <button id="btn-google-setup" class="btn-text-link" type="button">⚙️ 구글 드라이브 연결 설정</button>
+
       <p class="login-note">
         본인 계정만 사용하는 비공개 앱입니다.<br />
-        구글 드라이브 파일 접근 권한이 필요합니다.
+        데모는 이 브라우저에만 저장되며 드라이브로 전송되지 않습니다.
       </p>
     </div>
   </div>
@@ -87,6 +106,7 @@
         <div class="sidebar-workspace">
           <span class="workspace-icon">🏠</span>
           <span class="workspace-name">다락방</span>
+          <span id="demo-badge" class="demo-badge hidden" title="데모 모드 — 이 브라우저에만 저장됩니다">DEMO</span>
         </div>
         <div class="sidebar-header-actions">
           <button id="btn-theme-toggle" class="icon-btn" title="테마 전환" aria-label="테마 전환">
@@ -115,7 +135,7 @@
           id="search-input"
           type="search"
           class="search-input"
-          placeholder="페이지 검색..."
+          placeholder="제목·내용 검색..."
           aria-label="페이지 검색"
         />
       </div>
@@ -195,6 +215,7 @@
             <nav id="breadcrumb" class="breadcrumb" aria-label="경로"></nav>
           </div>
           <div class="page-toolbar-right">
+            <span id="save-status" class="save-status" aria-live="polite"></span>
             <span id="unsaved-indicator" class="unsaved-indicator hidden" title="저장되지 않은 변경사항" aria-label="저장되지 않은 변경사항">●</span>
             <button id="btn-save" class="btn-save" aria-label="저장 (Ctrl+S)">
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
@@ -252,19 +273,11 @@
   </div>
 
   <!-- =========================================================
-       SLASH COMMAND POPUP
-  ========================================================== -->
-  <div id="slash-popup" class="slash-popup hidden" role="listbox" aria-label="블록 타입 선택">
-    <div class="slash-popup-header">블록 유형 선택</div>
-    <ul id="slash-popup-list" class="slash-popup-list"></ul>
-  </div>
-
-  <!-- =========================================================
        EMOJI PICKER
   ========================================================== -->
   <div id="emoji-picker" class="emoji-picker hidden" role="dialog" aria-label="이모지 선택" aria-modal="true">
     <div class="emoji-picker-header">
-      <input id="emoji-search" type="search" class="emoji-search" placeholder="이모지 검색..." aria-label="이모지 검색" />
+      <input id="emoji-search" type="search" class="emoji-search" placeholder="이모지 검색 (예: 하트, 별, 책)..." aria-label="이모지 검색" />
     </div>
     <div id="emoji-grid" class="emoji-grid" role="list"></div>
   </div>
@@ -276,7 +289,7 @@
   <div id="modal-delete" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-delete-title">
     <div class="modal">
       <h3 id="modal-delete-title" class="modal-title">페이지 삭제</h3>
-      <p class="modal-body" id="modal-delete-body">이 페이지를 삭제하시겠습니까? 하위 페이지도 함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</p>
+      <p class="modal-body" id="modal-delete-body">이 페이지를 삭제하시겠습니까? 하위 페이지도 함께 삭제됩니다.</p>
       <div class="modal-actions">
         <button id="modal-delete-cancel" class="btn-secondary">취소</button>
         <button id="modal-delete-confirm" class="btn-danger">삭제</button>
@@ -296,14 +309,35 @@
     </div>
   </div>
 
-  <!-- Link Input Modal -->
-  <div id="modal-link" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-link-title">
+  <!-- Prompt (이름 바꾸기 / 링크) Modal -->
+  <div id="modal-prompt" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-prompt-title">
     <div class="modal modal-sm">
-      <h3 id="modal-link-title" class="modal-title">링크 삽입</h3>
-      <input id="modal-link-input" type="url" class="modal-input" placeholder="https://..." aria-label="링크 URL 입력" />
+      <h3 id="modal-prompt-title" class="modal-title">입력</h3>
+      <input id="modal-prompt-input" type="text" class="modal-input" placeholder="" aria-label="입력" />
       <div class="modal-actions">
-        <button id="modal-link-cancel" class="btn-secondary">취소</button>
-        <button id="modal-link-confirm" class="btn-primary">확인</button>
+        <button id="modal-prompt-cancel" class="btn-secondary">취소</button>
+        <button id="modal-prompt-confirm" class="btn-primary">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google 연결 설정 Modal -->
+  <div id="modal-gsetup" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-gsetup-title">
+    <div class="modal">
+      <h3 id="modal-gsetup-title" class="modal-title">구글 드라이브 연결 설정</h3>
+      <div class="modal-body">
+        <p style="margin-bottom:12px">본인 Google OAuth <strong>클라이언트 ID</strong>를 붙여넣으면 구글 드라이브에 저장됩니다.<br/>배포 후 코드 수정 없이 여기서 바로 설정할 수 있어요.</p>
+        <ol class="gsetup-steps">
+          <li><a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">Google Cloud Console</a>에서 <strong>OAuth 클라이언트 ID(웹 애플리케이션)</strong> 생성 + Drive API 사용 설정</li>
+          <li>“승인된 JavaScript 원본”에 <strong>현재 주소</strong>를 그대로 추가:<br/><code id="gsetup-origin">—</code></li>
+          <li>테스트 상태면 본인 Gmail을 <strong>테스트 사용자</strong>로 추가</li>
+          <li>발급된 ID를 아래에 붙여넣고 저장</li>
+        </ol>
+      </div>
+      <input id="gsetup-input" type="text" class="modal-input" placeholder="000000.apps.googleusercontent.com" aria-label="구글 클라이언트 ID" />
+      <div class="modal-actions">
+        <button id="gsetup-cancel" class="btn-secondary">닫기</button>
+        <button id="gsetup-save" class="btn-primary">저장</button>
       </div>
     </div>
   </div>
@@ -337,22 +371,19 @@
   <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="false"></div>
 
   <!-- =========================================================
-       MOBILE BLOCK MOVE NOTICE
-  ========================================================== -->
-  <div id="mobile-limit-banner" class="mobile-limit-banner hidden" role="alert">
-    블록 재배치는 PC에서만 가능합니다
-  </div>
-
-  <!-- =========================================================
        JS Modules (순서 중요)
   ========================================================== -->
-  <script src="js/ui.js?v=20260529-1"></script>
-  <script src="js/auth.js?v=20260529-1"></script>
-  <script src="js/drive.js?v=20260529-1"></script>
-  <script src="js/workspace.js?v=20260529-1"></script>
-  <script src="js/editor.js?v=20260529-1"></script>
-  <script src="js/sidebar.js?v=20260529-1"></script>
-  <script src="js/app.js?v=20260529-1"></script>
+  <script src="js/ui.js?v=20260603-1"></script>
+  <script src="js/samples.js?v=20260603-1"></script>
+  <script src="js/auth.js?v=20260603-1"></script>
+  <script src="js/drive.js?v=20260603-1"></script>
+  <script src="js/local-store.js?v=20260603-1"></script>
+  <script src="js/storage.js?v=20260603-1"></script>
+  <script src="js/workspace.js?v=20260603-1"></script>
+  <script src="js/blocks.js?v=20260603-1"></script>
+  <script src="js/editor.js?v=20260603-1"></script>
+  <script src="js/sidebar.js?v=20260603-1"></script>
+  <script src="js/app.js?v=20260603-1"></script>
 
 </body>
 </html>

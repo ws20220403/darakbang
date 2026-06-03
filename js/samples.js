@@ -1,0 +1,83 @@
+/**
+ * samples.js — 샘플(사용법) 노트 콘텐츠
+ * 데모 시드와 실(구글) 모드 첫 실행에서 공용으로 쓴다.
+ * 생성된 페이지는 일반 노트와 동일하게 수정·삭제할 수 있다.
+ */
+
+const Samples = (() => {
+
+  const USAGE_TITLE = '다락방 사용법';
+  const USAGE_ICON = '📖';
+  const USAGE_SEARCH =
+    '사용법 도움말 가이드 매뉴얼 시작 글쓰기 서식 굵게 링크 블록 추가 슬래시 목록 코드 표 인용구 토글 콜아웃 이미지 북마크 하위문서 목차 드래그 순서 이동 저장 자동저장 단축키 페이지 새 하위 이름 삭제 즐겨찾기 아이콘 커버 검색 구글 드라이브 연결 client id 배포 로그인 유지 데모';
+
+  // Editor.js 블록 배열 (데이터 형식 검증 완료)
+  function _blocks() {
+    return [
+      { type: 'header', data: { text: '📖 다락방 사용법', level: 1 } },
+      { type: 'paragraph', data: { text: '다락방을 처음 쓰는 분을 위한 안내서예요. <b>이 문서도 평범한 노트</b>라서 마음대로 고치거나, 다 읽고 지워도 됩니다.' } },
+      { type: 'callout', data: { icon: '🗑️', color: 'yellow', text: '지우려면 사이드바에서 이 페이지의 <b>⋯ → 삭제</b> (또는 블록별 ⠿ 손잡이 클릭 → 삭제).' } },
+
+      { type: 'header', data: { text: '✍️ 1. 글쓰기 & 서식', level: 2 } },
+      { type: 'paragraph', data: { text: '본문 아무 곳이나 클릭해 입력하세요. 한 줄(블록)에서 <b>Enter</b>를 누르면 다음 블록으로 넘어갑니다.' } },
+      { type: 'paragraph', data: { text: '글자를 드래그해 선택하면 <b>굵게</b>, <i>기울임</i>, 밑줄, <code class="inline-code">인라인 코드</code>, 링크를 넣는 도구가 떠요.' } },
+
+      { type: 'header', data: { text: '➕ 2. 블록 추가 ( + 또는 / )', level: 2 } },
+      { type: 'paragraph', data: { text: '줄 왼쪽의 <b>+</b> 버튼을 누르거나, 빈 줄에서 <b>/</b> 를 입력하면 추가 메뉴가 열립니다. 모든 블록이 <b>한 화면</b>에 그리드로 보이고, 검색어를 입력하거나 방향키 + Enter로 고를 수 있어요.' } },
+      { type: 'list', data: { style: 'unordered', items: [
+        { content: '<b>제목</b> 1·2·3 — 문서 구조', items: [] },
+        { content: '<b>목록</b> — 글머리 기호 / 번호 (Tab으로 들여쓰기 중첩)', items: [] },
+        { content: '<b>체크리스트</b> — 할 일 체크박스', items: [] },
+        { content: '<b>코드</b> — 여러 줄 코드 블록', items: [] },
+        { content: '<b>표</b> — 행/열 표', items: [] },
+        { content: '<b>인용구 · 구분선 · 토글 · 콜아웃</b>', items: [] },
+        { content: '<b>이미지 · 웹 북마크 · 하위 문서 · 목차(TOC)</b>', items: [] },
+      ] } },
+
+      { type: 'header', data: { text: '↕️ 3. 순서 바꾸기 (드래그)', level: 2 } },
+      { type: 'paragraph', data: { text: '블록 위에 마우스를 올리면 왼쪽에 손잡이 <b>⠿</b> 가 보여요. 잡고 위아래로 끌면 순서가 바뀌고 파란 선이 놓일 위치를 알려줍니다. 손잡이를 <b>한 번 클릭</b>하면 위로/아래로/삭제 메뉴가 열립니다. (모바일은 길게 눌러 드래그)' } },
+      { type: 'callout', data: { icon: '🧩', color: 'indigo', text: '이 줄을 드래그해서 다른 곳으로 옮겨보세요. 바로 익혀집니다!' } },
+
+      { type: 'header', data: { text: '💾 4. 저장', level: 2 } },
+      { type: 'checklist', data: { items: [
+        { text: '입력을 멈추면 약 1.5초 뒤 <b>자동 저장</b> (상단에 저장 시각 표시)', checked: true },
+        { text: '<b>Ctrl/⌘ + S</b> 또는 저장 버튼으로 즉시 저장', checked: true },
+        { text: '구글 모드면 내 드라이브의 <code class="inline-code">DARAKBANG</code> 폴더에 저장', checked: false },
+      ] } },
+
+      { type: 'header', data: { text: '🗂️ 5. 페이지 관리', level: 2 } },
+      { type: 'table', data: { withHeadings: true, content: [
+        ['하고 싶은 것', '방법'],
+        ['새 페이지', '사이드바 맨 아래 “새 페이지”'],
+        ['하위 페이지 / 이름변경 / 삭제 / 즐겨찾기', '페이지에 마우스 올리면 나오는 “⋯” 버튼'],
+        ['아이콘 바꾸기', '제목 위의 아이콘 클릭 → 이모지 선택'],
+        ['커버 이미지', '제목 위 “커버 추가”'],
+      ] } },
+      { type: 'paragraph', data: { text: '삭제한 페이지는 (구글 모드에서) 영구 삭제가 아니라 <b>드라이브 휴지통</b>으로 가서 복구할 수 있어요.' } },
+
+      { type: 'header', data: { text: '🔎 6. 검색 & ⭐ 즐겨찾기', level: 2 } },
+      { type: 'paragraph', data: { text: '사이드바 상단 검색창은 <b>제목과 본문 내용</b>을 함께 찾습니다. 자주 보는 페이지는 “⋯ → 즐겨찾기”로 위쪽에 고정하세요.' } },
+
+      { type: 'header', data: { text: '☁️ 7. 구글 드라이브로 저장 (배포용)', level: 2 } },
+      { type: 'paragraph', data: { text: '지금 데모 모드라면 이 브라우저에만 저장됩니다. 내 구글 드라이브에 저장하려면 로그인 화면의 <b>“⚙️ 구글 드라이브 연결 설정”</b>에서 본인 OAuth 클라이언트 ID를 한 번 입력하면 돼요(코드 수정 불필요).' } },
+      { type: 'bookmark', data: { url: 'https://console.cloud.google.com/apis/credentials', title: 'Google Cloud Console — OAuth 클라이언트 ID 발급' } },
+
+      { type: 'header', data: { text: '🔐 8. 로그인 / 데모', level: 2 } },
+      { type: 'list', data: { style: 'unordered', items: [
+        { content: '기본 화면은 <b>구글 계정 로그인</b>입니다.', items: [] },
+        { content: '<b>“로그인 상태 유지”</b>를 켜면 다음에 열 때 자동 로그인됩니다(끄면 이번만).', items: [] },
+        { content: '<b>“데모로 둘러보기”</b>는 로그인 없이 체험하는 모드예요(이 브라우저에만 저장).', items: [] },
+      ] } },
+
+      { type: 'delimiter', data: {} },
+      { type: 'quote', data: { text: '작게 시작해 차곡차곡. 이 문서는 지워도 되고, 마음대로 바꿔도 됩니다.', caption: '다락방', alignment: 'left' } },
+    ];
+  }
+
+  function usageEditorData() {
+    // 깊은 복사로 원본 보호(에디터가 데이터를 변형해도 안전)
+    return { time: 0, blocks: JSON.parse(JSON.stringify(_blocks())) };
+  }
+
+  return { USAGE_TITLE, USAGE_ICON, USAGE_SEARCH, usageEditorData };
+})();

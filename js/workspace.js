@@ -32,22 +32,23 @@ const Workspace = (() => {
   ========================================================= */
   async function init() {
     // 폴더 구조 초기화
-    await Drive.initFolderStructure();
+    await Storage.initFolderStructure();
 
     // workspace.json 로드
-    let ws = await Drive.readWorkspace();
+    let ws = await Storage.readWorkspace();
+    let isNewWorkspace = false;
     if (!ws) {
-      // 최초 실행: workspace 생성
-      ws = { ...DEFAULT_WORKSPACE };
-      await Drive.writeWorkspace(ws);
+      // 최초 실행: 새 workspace (배열을 새로 만들어 기본값 공유 방지)
+      ws = { version: '2.0', pages: [], rootPageOrder: [] };
+      isNewWorkspace = true;
     }
     _workspace = ws;
 
     // settings.json 로드
-    let settings = await Drive.readSettings();
+    let settings = await Storage.readSettings();
     if (!settings) {
-      settings = { ...DEFAULT_SETTINGS };
-      await Drive.writeSettings(settings);
+      settings = { ...DEFAULT_SETTINGS, favorites: [], expandedPages: [] };
+      await Storage.writeSettings(settings);
     }
     _settings = settings;
 
@@ -56,20 +57,53 @@ const Workspace = (() => {
       UI.applyTheme(_settings.theme);
     }
 
+    // 사용법 샘플 노트를 일반 페이지로 보장 (최초 1회, 모드별). 삭제하면 다시 만들지 않음.
+    void isNewWorkspace;
+    await _ensureUsagePage();
+
     return { workspace: _workspace, settings: _settings };
+  }
+
+  /* 사용법 페이지가 없으면 1회 생성 (데모는 시드, 실모드는 첫 실행/기존 사용자 모두 커버) */
+  async function _ensureUsagePage() {
+    if (typeof Samples === 'undefined') return;
+    const flagKey = 'darakbang_usage_seeded_' + (Storage.isDemo() ? 'demo' : 'drive');
+    if (localStorage.getItem(flagKey)) return;
+    const exists = _workspace.pages.some(p => p.title === Samples.USAGE_TITLE);
+    if (!exists) {
+      try { await _createStarterPage(); await _saveWorkspace(); }
+      catch (e) { console.warn('사용법 페이지 생성 실패:', e); return; }
+    }
+    try { localStorage.setItem(flagKey, '1'); } catch {}
+  }
+
+  /* "사용법" 샘플 페이지 생성 (일반 노트와 동일) */
+  async function _createStarterPage() {
+    if (typeof Samples === 'undefined') return;
+    const id = UI.generateId();
+    const now = new Date().toISOString();
+    const meta = { id, title: Samples.USAGE_TITLE, icon: Samples.USAGE_ICON, parentId: null, children: [], searchText: Samples.USAGE_SEARCH };
+    const pageData = {
+      id, title: meta.title, icon: meta.icon, coverImageId: null, parentId: null,
+      createdAt: now, updatedAt: now, editorData: Samples.usageEditorData(),
+    };
+    _workspace.pages.push(meta);
+    _workspace.rootPageOrder.push(id);
+    await Storage.writePage(id, pageData);
+    _pageCache[id] = pageData;
   }
 
   /* =========================================================
      workspace.json 저장
   ========================================================= */
   async function _saveWorkspace() {
-    return await Drive.writeWorkspace(_workspace);
+    return await Storage.writeWorkspace(_workspace);
   }
 
   async function _saveSettings() {
     // 현재 테마도 저장
     _settings.theme = document.documentElement.getAttribute('data-theme') || 'light';
-    return await Drive.writeSettings(_settings);
+    return await Storage.writeSettings(_settings);
   }
 
   /* =========================================================
@@ -84,7 +118,17 @@ const Workspace = (() => {
   }
 
   function getRootPages() {
-    return _workspace.pages.filter(p => !p.parentId);
+    const roots = _workspace.pages.filter(p => !p.parentId);
+    const order = _workspace.rootPageOrder || [];
+    // rootPageOrder 순서를 반영(없는 항목은 뒤로)
+    return roots.slice().sort((a, b) => {
+      const ia = order.indexOf(a.id);
+      const ib = order.indexOf(b.id);
+      if (ia === -1 && ib === -1) return 0;
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
   }
 
   function getChildren(parentId) {
@@ -164,7 +208,7 @@ const Workspace = (() => {
     }
 
     // Drive에 저장
-    await Drive.writePage(id, pageData);
+    await Storage.writePage(id, pageData);
     await _saveWorkspace();
 
     // 로컬 캐시
@@ -179,7 +223,7 @@ const Workspace = (() => {
   async function loadPage(pageId) {
     if (_pageCache[pageId]) return _pageCache[pageId];
 
-    const data = await Drive.readPage(pageId);
+    const data = await Storage.readPage(pageId);
     if (!data) throw new Error(`페이지를 찾을 수 없습니다: ${pageId}`);
 
     _pageCache[pageId] = data;
@@ -190,7 +234,7 @@ const Workspace = (() => {
      페이지 저장
   ========================================================= */
   async function savePage(pageId, editorData, title, icon, coverImageId) {
-    if (!UI.isOnline()) {
+    if (!UI.isOnline() && !Storage.isDemo()) {
       UI.toast('인터넷 연결이 필요합니다. 연결 후 저장해주세요.', 'warning', 5000);
       return false;
     }
@@ -200,18 +244,21 @@ const Workspace = (() => {
 
     // 다른 기기에서 먼저 저장한 변경을 조용히 덮어쓰지 않도록 방어합니다.
     // 로컬에서 마지막으로 읽은 updatedAt과 Drive의 현재 updatedAt이 다르면 저장을 중단합니다.
-    try {
-      const remote = await Drive.readPage(pageId);
-      if (
-        remote?.updatedAt &&
-        existing?.updatedAt &&
-        remote.updatedAt !== existing.updatedAt
-      ) {
-        UI.toast('다른 기기에서 먼저 저장된 변경이 있습니다. 이 페이지를 다시 열어 확인한 뒤 저장해주세요.', 'warning', 9000);
-        return false;
+    // (데모 모드는 단일 브라우저 저장이라 충돌 개념이 없으므로 건너뜁니다.)
+    if (!Storage.isDemo()) {
+      try {
+        const remote = await Storage.readPage(pageId);
+        if (
+          remote?.updatedAt &&
+          existing?.updatedAt &&
+          remote.updatedAt !== existing.updatedAt
+        ) {
+          UI.toast('다른 기기에서 먼저 저장된 변경이 있습니다. 이 페이지를 다시 열어 확인한 뒤 저장해주세요.', 'warning', 9000);
+          return false;
+        }
+      } catch (e) {
+        console.warn('원격 변경 확인 실패:', e);
       }
-    } catch (e) {
-      console.warn('원격 변경 확인 실패:', e);
     }
 
     const updated = {
@@ -229,9 +276,10 @@ const Workspace = (() => {
     if (meta) {
       meta.title = updated.title;
       meta.icon  = updated.icon;
+      meta.searchText = _extractText(editorData);   // 전체 텍스트 검색용 인덱스
     }
 
-    await Drive.writePage(pageId, updated);
+    await Storage.writePage(pageId, updated);
     await _saveWorkspace();
 
     _pageCache[pageId] = updated;
@@ -255,7 +303,7 @@ const Workspace = (() => {
 
     // Drive에서 파일 삭제
     try {
-      await Drive.deletePage(pageId);
+      await Storage.deletePage(pageId);
     } catch (e) {
       console.warn('페이지 파일 삭제 실패:', e);
     }
@@ -376,8 +424,43 @@ const Workspace = (() => {
     if (!query) return [];
     const q = query.toLowerCase();
     return _workspace.pages.filter(p =>
-      p.title && p.title.toLowerCase().includes(q)
+      (p.title && p.title.toLowerCase().includes(q)) ||
+      (p.searchText && p.searchText.toLowerCase().includes(q))
     );
+  }
+
+  /* 본문 블록에서 평문 텍스트 추출 (검색 인덱스용) */
+  function _extractText(editorData) {
+    if (!editorData || !editorData.blocks) return '';
+    const strip = (html) => {
+      if (!html) return '';
+      const d = document.createElement('div');
+      d.innerHTML = html;
+      return d.textContent || '';
+    };
+    const parts = [];
+    for (const b of editorData.blocks) {
+      const d = b.data || {};
+      switch (b.type) {
+        case 'paragraph': case 'header': case 'quote': case 'callout': case 'toggle':
+          parts.push(strip(d.text), strip(d.title), strip(d.content), strip(d.caption));
+          break;
+        case 'code': parts.push(d.code || ''); break;
+        case 'checklist': (d.items || []).forEach(i => parts.push(strip(i.text))); break;
+        case 'list': {
+          const walk = (items) => (items || []).forEach(it => {
+            parts.push(strip(typeof it === 'string' ? it : it.content));
+            if (it && it.items) walk(it.items);
+          });
+          walk(d.items);
+          break;
+        }
+        case 'table': (d.content || []).forEach(row => (row || []).forEach(c => parts.push(strip(c)))); break;
+        case 'bookmark': parts.push(d.title || '', d.url || ''); break;
+        default: break;
+      }
+    }
+    return parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim().slice(0, 5000);
   }
 
   /* =========================================================
