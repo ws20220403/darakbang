@@ -1,4 +1,4 @@
-﻿/**
+/**
  * auth.js — Google OAuth 2.0 인증
  * Google Identity Services (GIS) 기반
  * access_token → localStorage 저장
@@ -6,24 +6,9 @@
 
 const Auth = (() => {
 
-  // Client ID는 두 가지 방법으로 설정할 수 있습니다.
-  //  (1) 코드: 아래 DEFAULT_CLIENT_ID 교체
-  //  (2) 배포 후 앱 화면: 로그인 화면 "구글 드라이브 연결 설정"에서 입력(localStorage 저장, 우선 적용)
-  const DEFAULT_CLIENT_ID = '1055434776065-64gj8snigehdl2krfjprnr6p4lo7k91u.apps.googleusercontent.com';
-  const STORAGE_KEY_CLIENT = 'darakbang_client_id';
+  // !! 배포 전 Google Cloud Console에서 발급받은 Client ID로 교체하세요 !!
+  const CLIENT_ID = '1055434776065-64gj8snigehdl2krfjprnr6p4lo7k91u.apps.googleusercontent.com';
   const SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
-
-  function getClientId() {
-    return (localStorage.getItem(STORAGE_KEY_CLIENT) || DEFAULT_CLIENT_ID).trim();
-  }
-  function setClientId(id) {
-    if (id && id.trim()) localStorage.setItem(STORAGE_KEY_CLIENT, id.trim());
-    else localStorage.removeItem(STORAGE_KEY_CLIENT);
-  }
-  function isConfigured() {
-    const id = getClientId();
-    return !!id && !id.startsWith('YOUR_GOOGLE_CLIENT_ID') && id.includes('.apps.googleusercontent.com');
-  }
 
   const STORAGE_KEY_TOKEN    = 'darakbang_token';
   const STORAGE_KEY_EXPIRES  = 'darakbang_token_expires';
@@ -54,7 +39,7 @@ const Auth = (() => {
   function _initTokenClient(resolve, reject) {
     try {
       tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: getClientId(),
+        client_id: CLIENT_ID,
         scope: SCOPE,
         callback: (response) => {
           if (response.error) {
@@ -63,9 +48,8 @@ const Auth = (() => {
             return;
           }
           const expiresAt = Date.now() + (response.expires_in - 60) * 1000;
-          const store = _store();
-          store.setItem(STORAGE_KEY_TOKEN,   response.access_token);
-          store.setItem(STORAGE_KEY_EXPIRES, String(expiresAt));
+          localStorage.setItem(STORAGE_KEY_TOKEN,   response.access_token);
+          localStorage.setItem(STORAGE_KEY_EXPIRES, String(expiresAt));
           _resolveTokenCallbacks?.(response.access_token, null);
         },
         error_callback: (err) => {
@@ -123,9 +107,8 @@ const Auth = (() => {
      토큰 가져오기 (자동 갱신)
   ========================================================= */
   async function getToken() {
-    const store = _store();
-    const token    = store.getItem(STORAGE_KEY_TOKEN);
-    const expiresAt = parseInt(store.getItem(STORAGE_KEY_EXPIRES) || '0');
+    const token    = localStorage.getItem(STORAGE_KEY_TOKEN);
+    const expiresAt = parseInt(localStorage.getItem(STORAGE_KEY_EXPIRES) || '0');
 
     if (token && Date.now() < expiresAt) {
       return token;
@@ -145,7 +128,6 @@ const Auth = (() => {
      로그아웃
   ========================================================= */
   function logout() {
-    if (isDemo()) { exitDemo(); return; }
     const token = localStorage.getItem(STORAGE_KEY_TOKEN);
     if (token && window.google?.accounts?.oauth2) {
       google.accounts.oauth2.revoke(token, () => {});
@@ -154,39 +136,17 @@ const Auth = (() => {
   }
 
   function clearTokens() {
-    [localStorage, sessionStorage].forEach(s => {
-      s.removeItem(STORAGE_KEY_TOKEN);
-      s.removeItem(STORAGE_KEY_EXPIRES);
-      s.removeItem(STORAGE_KEY_USER);
-    });
+    localStorage.removeItem(STORAGE_KEY_TOKEN);
+    localStorage.removeItem(STORAGE_KEY_EXPIRES);
+    localStorage.removeItem(STORAGE_KEY_USER);
   }
-
-  /* =========================================================
-     데모 모드 (OAuth 없이 둘러보기) — 세션 한정
-     (기본 진입 화면은 구글 로그인. 데모는 새로 실행하면 풀린다)
-  ========================================================= */
-  const STORAGE_KEY_DEMO = 'darakbang_demo';
-
-  function enterDemo() { sessionStorage.setItem(STORAGE_KEY_DEMO, '1'); }
-  function exitDemo()  { sessionStorage.removeItem(STORAGE_KEY_DEMO); localStorage.removeItem(STORAGE_KEY_DEMO); }
-  function isDemo()    { return sessionStorage.getItem(STORAGE_KEY_DEMO) === '1'; }
-
-  /* =========================================================
-     로그인 상태 유지 설정 (체크 시 localStorage, 해제 시 sessionStorage)
-  ========================================================= */
-  const STORAGE_KEY_PERSIST = 'darakbang_persist';
-  function getPersist() { return localStorage.getItem(STORAGE_KEY_PERSIST) !== '0'; }   // 기본: 유지
-  function setPersist(v) { localStorage.setItem(STORAGE_KEY_PERSIST, v ? '1' : '0'); }
-  function _store() { return getPersist() ? localStorage : sessionStorage; }
 
   /* =========================================================
      로그인 상태 확인
   ========================================================= */
   function isLoggedIn() {
-    if (isDemo()) return true;
-    const store = _store();
-    const token    = store.getItem(STORAGE_KEY_TOKEN);
-    const expiresAt = parseInt(store.getItem(STORAGE_KEY_EXPIRES) || '0');
+    const token    = localStorage.getItem(STORAGE_KEY_TOKEN);
+    const expiresAt = parseInt(localStorage.getItem(STORAGE_KEY_EXPIRES) || '0');
     return !!(token && Date.now() < expiresAt);
   }
 
@@ -194,13 +154,8 @@ const Auth = (() => {
      사용자 정보 가져오기
   ========================================================= */
   async function fetchUserInfo() {
-    // 데모 모드: 가상 사용자
-    if (isDemo()) {
-      return { id: 'demo', name: '데모 사용자', email: '데모 모드 · 로컬 저장', picture: '' };
-    }
-
-    // 캐시 우선
-    const cached = _store().getItem(STORAGE_KEY_USER);
+    // localStorage 캐시 우선
+    const cached = localStorage.getItem(STORAGE_KEY_USER);
     if (cached) {
       try { return JSON.parse(cached); } catch {}
     }
@@ -214,7 +169,7 @@ const Auth = (() => {
     const user = await res.json();
 
     // 캐싱
-    _store().setItem(STORAGE_KEY_USER, JSON.stringify({
+    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify({
       id:      user.id,
       name:    user.name,
       email:   user.email,
@@ -235,13 +190,6 @@ const Auth = (() => {
     isLoggedIn,
     fetchUserInfo,
     clearTokens,
-    enterDemo,
-    exitDemo,
-    isDemo,
-    getClientId,
-    setClientId,
-    isConfigured,
-    getPersist,
-    setPersist,
+    CLIENT_ID,
   };
 })();
