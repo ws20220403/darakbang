@@ -9,7 +9,7 @@ const Auth = (() => {
   // Client ID는 두 가지 방법으로 설정할 수 있습니다.
   //  (1) 코드: 아래 DEFAULT_CLIENT_ID 교체
   //  (2) 배포 후 앱 화면: 로그인 화면 "구글 드라이브 연결 설정"에서 입력(localStorage 저장, 우선 적용)
-  const DEFAULT_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com';
+  const DEFAULT_CLIENT_ID = '1055434776065-64gj8snigehdl2krfjprnr6p4lo7k91u.apps.googleusercontent.com';
   const STORAGE_KEY_CLIENT = 'darakbang_client_id';
   const SCOPE = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email';
 
