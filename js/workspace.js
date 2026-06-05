@@ -132,7 +132,20 @@ const Workspace = (() => {
   }
 
   function getChildren(parentId) {
-    return _workspace.pages.filter(p => p.parentId === parentId);
+    // 존재의 원천은 parentId 이지만, 표시 순서는 부모 메타의 children 배열 순서를 따른다.
+    // (본문 안 '하위 문서' 링크의 순서를 저장 시 children 에 반영 → 사이드바도 같은 순서)
+    const kids = _workspace.pages.filter(p => p.parentId === parentId);
+    const parentMeta = getPageMeta(parentId);
+    const order = (parentMeta && Array.isArray(parentMeta.children)) ? parentMeta.children : [];
+    if (!order.length) return kids;
+    return kids.slice().sort((a, b) => {
+      const ia = order.indexOf(a.id);
+      const ib = order.indexOf(b.id);
+      if (ia === -1 && ib === -1) return 0;
+      if (ia === -1) return 1;   // 순서 정보 없는 항목은 뒤로
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
   }
 
   function getDepth(pageId) {
@@ -218,6 +231,164 @@ const Workspace = (() => {
   }
 
   /* =========================================================
+     본문 ↔ 하위 페이지 링크 동기화 (요구사항 1·2)
+  ========================================================= */
+
+  /* 부모 본문 맨 아래에 하위문서 링크 블록 추가 (부모가 '열려있지 않은' 경우).
+     부모가 현재 열려있으면 App 쪽에서 라이브 에디터에 직접 삽입한다. */
+  async function appendChildLink(parentId, childId) {
+    let data = _pageCache[parentId] || await Storage.readPage(parentId);
+    if (!data) return false;
+    if (!data.editorData || typeof data.editorData !== 'object') data.editorData = { blocks: [] };
+    if (!Array.isArray(data.editorData.blocks)) data.editorData.blocks = [];
+
+    const exists = data.editorData.blocks.some(
+      b => b && b.type === 'pageLink' && b.data && b.data.pageId === childId
+    );
+    if (!exists) {
+      data.editorData.blocks.push({ type: 'pageLink', data: { pageId: childId } });
+      data.updatedAt = new Date().toISOString();
+      await Storage.writePage(parentId, data);
+      _pageCache[parentId] = data;
+    }
+    return true;
+  }
+
+  /* 부모 본문에서 특정 하위문서 링크 블록 제거 (부모가 '열려있지 않은' 경우).
+     자식 삭제 시 죽은 링크가 남지 않도록. */
+  async function removeChildLink(parentId, childId) {
+    let data = _pageCache[parentId] || await Storage.readPage(parentId);
+    if (!data || !data.editorData || !Array.isArray(data.editorData.blocks)) return false;
+
+    const before = data.editorData.blocks.length;
+    data.editorData.blocks = data.editorData.blocks.filter(
+      b => !(b && b.type === 'pageLink' && b.data && b.data.pageId === childId)
+    );
+    if (data.editorData.blocks.length !== before) {
+      data.updatedAt = new Date().toISOString();
+      await Storage.writePage(parentId, data);
+      _pageCache[parentId] = data;
+    }
+    return true;
+  }
+
+  /* 저장 시: 본문의 하위문서(pageLink) 순서를 부모 children 순서에 반영 */
+  function _syncChildrenOrderFromBody(meta, editorData) {
+    if (!meta || !Array.isArray(meta.children) || meta.children.length < 2) return;
+    if (!editorData || !Array.isArray(editorData.blocks)) return;
+
+    const bodyOrder = [];
+    for (const b of editorData.blocks) {
+      if (b && b.type === 'pageLink' && b.data && b.data.pageId) bodyOrder.push(b.data.pageId);
+    }
+    if (bodyOrder.length < 2) return; // 본문에 링크가 2개 미만이면 순서 의미 없음
+
+    const inBody = meta.children
+      .filter(id => bodyOrder.includes(id))
+      .sort((a, b) => bodyOrder.indexOf(a) - bodyOrder.indexOf(b));
+    const notInBody = meta.children.filter(id => !bodyOrder.includes(id));
+    meta.children = [...inBody, ...notInBody];
+  }
+
+  /* =========================================================
+     루트 페이지 순서 변경 (요구사항 3 — 하위페이지 제외, 루트끼리만)
+  ========================================================= */
+  function _normalizedRootOrder() {
+    const roots = _workspace.pages.filter(p => !p.parentId).map(p => p.id);
+    const existing = (_workspace.rootPageOrder || []).filter(id => roots.includes(id));
+    const missing = roots.filter(id => !existing.includes(id));
+    return [...existing, ...missing];
+  }
+
+  /* 위로(-1)/아래로(+1) 한 칸 이동 */
+  async function moveRootPage(pageId, direction) {
+    const meta = getPageMeta(pageId);
+    if (!meta || meta.parentId) return false;   // 루트 페이지만
+    const order = _normalizedRootOrder();
+    const idx = order.indexOf(pageId);
+    const target = idx + (direction < 0 ? -1 : 1);
+    if (idx === -1 || target < 0 || target >= order.length) return false;
+    [order[idx], order[target]] = [order[target], order[idx]];
+    _workspace.rootPageOrder = order;
+    await _saveWorkspace();
+    return true;
+  }
+
+  /* 드래그&드롭: pageId 를 beforePageId 앞으로 이동 (beforePageId 가 null 이면 맨 끝) */
+  async function reorderRootPage(pageId, beforePageId) {
+    const meta = getPageMeta(pageId);
+    if (!meta || meta.parentId) return false;
+    if (pageId === beforePageId) return false;
+    const order = _normalizedRootOrder().filter(id => id !== pageId);
+    if (beforePageId == null) {
+      order.push(pageId);
+    } else {
+      const i = order.indexOf(beforePageId);
+      if (i === -1) order.push(pageId);
+      else order.splice(i, 0, pageId);
+    }
+    _workspace.rootPageOrder = order;
+    await _saveWorkspace();
+    return true;
+  }
+
+  function getRootIndex(pageId) {
+    return _normalizedRootOrder().indexOf(pageId);
+  }
+  function getRootCount() {
+    return _workspace.pages.filter(p => !p.parentId).length;
+  }
+
+  /* =========================================================
+     페이지 복제 (요구사항 5) — 본문/아이콘 포함, 하위페이지는 제외
+  ========================================================= */
+  async function duplicatePage(pageId) {
+    const srcMeta = getPageMeta(pageId);
+    if (!srcMeta) return null;
+    const srcData = _pageCache[pageId] || await Storage.readPage(pageId);
+    if (!srcData) return null;
+
+    const newId = UI.generateId();
+    const now = new Date().toISOString();
+    const parentId = srcMeta.parentId || null;
+
+    // 본문 깊은 복사 + 하위문서(pageLink) 블록은 제거(자식까지 복제하지 않음 → 죽은 링크 방지)
+    const clonedEditor = JSON.parse(JSON.stringify(srcData.editorData || { blocks: [] }));
+    if (Array.isArray(clonedEditor.blocks)) {
+      clonedEditor.blocks = clonedEditor.blocks.filter(b => !(b && b.type === 'pageLink'));
+    }
+
+    const newTitle = (srcMeta.title || '제목 없음') + ' (복사본)';
+    const meta = { id: newId, title: newTitle, icon: srcMeta.icon || '📄', parentId, children: [], searchText: srcMeta.searchText || '' };
+    const pageData = {
+      id: newId, title: newTitle, icon: srcMeta.icon || '📄',
+      coverImageId: parentId ? null : (srcData.coverImageId || null),
+      parentId, createdAt: now, updatedAt: now, editorData: clonedEditor,
+    };
+
+    _workspace.pages.push(meta);
+    if (!parentId) {
+      // 원본 바로 뒤에 배치
+      const order = _normalizedRootOrder();
+      const i = order.indexOf(pageId);
+      if (i === -1) order.push(newId); else order.splice(i + 1, 0, newId);
+      _workspace.rootPageOrder = order;
+    } else {
+      const pm = getPageMeta(parentId);
+      if (pm) {
+        if (!pm.children) pm.children = [];
+        // 끝에 추가 → 본문 링크도 맨 아래에 붙으므로 사이드바/본문 순서가 일치
+        pm.children.push(newId);
+      }
+    }
+
+    await Storage.writePage(newId, pageData);
+    await _saveWorkspace();
+    _pageCache[newId] = pageData;
+    return { meta, pageData };
+  }
+
+  /* =========================================================
      페이지 로드
   ========================================================= */
   async function loadPage(pageId) {
@@ -277,6 +448,7 @@ const Workspace = (() => {
       meta.title = updated.title;
       meta.icon  = updated.icon;
       meta.searchText = _extractText(editorData);   // 전체 텍스트 검색용 인덱스
+      _syncChildrenOrderFromBody(meta, editorData); // 본문 하위문서 순서 → 사이드바 순서
     }
 
     await Storage.writePage(pageId, updated);
@@ -456,6 +628,8 @@ const Workspace = (() => {
           break;
         }
         case 'table': (d.content || []).forEach(row => (row || []).forEach(c => parts.push(strip(c)))); break;
+        case 'spreadsheet': (d.cells || []).forEach(row => (row || []).forEach(c => parts.push(String(c || '')))); break;
+        case 'attachment': parts.push(d.name || '', d.caption || ''); break;
         case 'bookmark': parts.push(d.title || '', d.url || ''); break;
         default: break;
       }
@@ -479,6 +653,13 @@ const Workspace = (() => {
     savePage,
     deletePage,
     renamePage,
+    duplicatePage,
+    appendChildLink,
+    removeChildLink,
+    moveRootPage,
+    reorderRootPage,
+    getRootIndex,
+    getRootCount,
     isFavorite,
     toggleFavorite,
     getFavorites,

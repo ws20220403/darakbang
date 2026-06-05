@@ -97,12 +97,14 @@ const EditorManager = (() => {
       underline: { class: Underline },
 
       // 커스텀 블록 (blocks.js)
-      toggle:   { class: ToggleTool },
-      callout:  { class: CalloutTool },
-      image:    { class: DarakImageTool },
-      bookmark: { class: BookmarkTool },
-      pageLink: { class: PageLinkTool },
-      toc:      { class: TableOfContentsTool },
+      toggle:      { class: ToggleTool },
+      callout:     { class: CalloutTool },
+      image:       { class: DarakImageTool },
+      attachment:  { class: AttachmentTool },    // [v3] 파일 첨부 (PDF/Word/Excel/hwp…)
+      spreadsheet: { class: SpreadsheetTool },    // [v3] 계산표 (sum/average/max/min…)
+      bookmark:    { class: BookmarkTool },
+      pageLink:    { class: PageLinkTool },
+      toc:         { class: TableOfContentsTool },
     };
   }
 

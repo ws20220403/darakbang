@@ -48,5 +48,7 @@ const Storage = (() => {
     deletePage:          _d('deletePage'),
     uploadImage:         _d('uploadImage'),
     getImageBlobUrl:     _d('getImageBlobUrl'),
+    uploadFile:          _d('uploadFile'),       // 임의 파일(PDF/Word/Excel/hwp 등)
+    getFileBlobUrl:      _d('getFileBlobUrl'),    // 다운로드용 URL
   };
 })();

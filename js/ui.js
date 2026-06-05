@@ -314,11 +314,15 @@ const UI = (() => {
   function openContextMenu(x, y, options) {
     const menu = document.getElementById('context-menu');
 
-    // options: { rename, favorite, favorited, newSubpage, delete }
     const ctxRename    = document.getElementById('ctx-rename');
     const ctxFavorite  = document.getElementById('ctx-favorite');
     const ctxNewSub    = document.getElementById('ctx-new-subpage');
     const ctxDelete    = document.getElementById('ctx-delete');
+    const ctxMoveUp    = document.getElementById('ctx-move-up');
+    const ctxMoveDown  = document.getElementById('ctx-move-down');
+    const ctxDuplicate = document.getElementById('ctx-duplicate');
+    const ctxExport    = document.getElementById('ctx-export');
+    const moveSep      = document.getElementById('ctx-move-sep');
 
     // 즐겨찾기 텍스트 업데이트
     ctxFavorite.innerHTML = `
@@ -326,13 +330,21 @@ const UI = (() => {
       ${options.favorited ? '즐겨찾기 제거' : '즐겨찾기에 추가'}
     `;
 
+    // 위로/아래로 (루트 페이지에서만) — 표시/비활성 토글
+    const showMove = !!options.showMove;
+    if (ctxMoveUp)   ctxMoveUp.classList.toggle('hidden', !showMove);
+    if (ctxMoveDown) ctxMoveDown.classList.toggle('hidden', !showMove);
+    if (moveSep)     moveSep.classList.toggle('hidden', !showMove);
+    if (ctxMoveUp)   ctxMoveUp.classList.toggle('context-menu-item-disabled', !options.canMoveUp);
+    if (ctxMoveDown) ctxMoveDown.classList.toggle('context-menu-item-disabled', !options.canMoveDown);
+
     // 위치
     let left = x;
     let top  = y;
-    const menuW = 180;
-    const menuH = 160;
+    const menuW = 190;
+    const menuH = 280;
     if (left + menuW > window.innerWidth) left = x - menuW;
-    if (top  + menuH > window.innerHeight) top = y - menuH;
+    if (top  + menuH > window.innerHeight) top = Math.max(4, window.innerHeight - menuH - 4);
 
     menu.style.left = `${Math.max(4, left)}px`;
     menu.style.top  = `${Math.max(4, top)}px`;
@@ -346,19 +358,31 @@ const UI = (() => {
       ctxFavorite.removeEventListener('click', onFavorite);
       ctxNewSub.removeEventListener('click', onNewSub);
       ctxDelete.removeEventListener('click', onDelete);
+      ctxMoveUp?.removeEventListener('click', onMoveUp);
+      ctxMoveDown?.removeEventListener('click', onMoveDown);
+      ctxDuplicate?.removeEventListener('click', onDuplicate);
+      ctxExport?.removeEventListener('click', onExport);
     };
 
-    const onRename   = () => { close(); options.onRename?.(); };
-    const onFavorite = () => { close(); options.onFavorite?.(); };
-    const onNewSub   = () => { close(); options.onNewSubpage?.(); };
-    const onDelete   = () => { close(); options.onDelete?.(); };
-    const onDocClick = (e) => { if (!menu.contains(e.target)) close(); };
-    const onKeydown  = (e) => { if (e.key === 'Escape') close(); };
+    const onRename    = () => { close(); options.onRename?.(); };
+    const onFavorite  = () => { close(); options.onFavorite?.(); };
+    const onNewSub    = () => { close(); options.onNewSubpage?.(); };
+    const onDelete    = () => { close(); options.onDelete?.(); };
+    const onMoveUp    = () => { if (options.canMoveUp)   { close(); options.onMoveUp?.(); } };
+    const onMoveDown  = () => { if (options.canMoveDown) { close(); options.onMoveDown?.(); } };
+    const onDuplicate = () => { close(); options.onDuplicate?.(); };
+    const onExport    = () => { close(); options.onExport?.(); };
+    const onDocClick  = (e) => { if (!menu.contains(e.target)) close(); };
+    const onKeydown   = (e) => { if (e.key === 'Escape') close(); };
 
     ctxRename.addEventListener('click', onRename);
     ctxFavorite.addEventListener('click', onFavorite);
     ctxNewSub.addEventListener('click', onNewSub);
     ctxDelete.addEventListener('click', onDelete);
+    ctxMoveUp?.addEventListener('click', onMoveUp);
+    ctxMoveDown?.addEventListener('click', onMoveDown);
+    ctxDuplicate?.addEventListener('click', onDuplicate);
+    ctxExport?.addEventListener('click', onExport);
     document.addEventListener('click', onDocClick);
     document.addEventListener('keydown', onKeydown);
   }

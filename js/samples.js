@@ -9,7 +9,7 @@ const Samples = (() => {
   const USAGE_TITLE = '다락방 사용법';
   const USAGE_ICON = '📖';
   const USAGE_SEARCH =
-    '사용법 도움말 가이드 매뉴얼 시작 글쓰기 서식 굵게 링크 블록 추가 슬래시 목록 코드 표 인용구 토글 콜아웃 이미지 북마크 하위문서 목차 드래그 순서 이동 저장 자동저장 단축키 페이지 새 하위 이름 삭제 즐겨찾기 아이콘 커버 검색 구글 드라이브 연결 client id 배포 로그인 유지 데모';
+    '사용법 도움말 가이드 매뉴얼 시작 글쓰기 서식 굵게 링크 블록 추가 슬래시 목록 코드 표 계산표 함수 sum average max min 파일 첨부 pdf word excel hwp 인용구 토글 콜아웃 이미지 북마크 하위문서 목차 드래그 순서 이동 복제 내보내기 백업 markdown 단어수 저장 자동저장 단축키 페이지 새 하위 이름 삭제 즐겨찾기 아이콘 커버 검색 구글 드라이브 연결 client id 배포 로그인 유지 데모';
 
   // Editor.js 블록 배열 (데이터 형식 검증 완료)
   function _blocks() {
@@ -30,8 +30,19 @@ const Samples = (() => {
         { content: '<b>체크리스트</b> — 할 일 체크박스', items: [] },
         { content: '<b>코드</b> — 여러 줄 코드 블록', items: [] },
         { content: '<b>표</b> — 행/열 표', items: [] },
+        { content: '<b>계산표</b> — 셀에 <code class="inline-code">=SUM(A1:A3)</code> 같은 함수 (신규)', items: [] },
+        { content: '<b>파일</b> — PDF·Word·Excel·hwp 등 첨부/다운로드 (신규)', items: [] },
         { content: '<b>인용구 · 구분선 · 토글 · 콜아웃</b>', items: [] },
         { content: '<b>이미지 · 웹 북마크 · 하위 문서 · 목차(TOC)</b>', items: [] },
+      ] } },
+
+      { type: 'header', data: { text: '🆕 새로워진 기능 (v3)', level: 2 } },
+      { type: 'list', data: { style: 'unordered', items: [
+        { content: '<b>하위 페이지 ↔ 본문 링크</b> — 좌측 탭에서 하위 페이지를 만들면 이 본문 맨 아래에 링크가 자동으로 생깁니다.', items: [] },
+        { content: '<b>순서 동기화</b> — 본문에서 하위 문서 링크를 드래그로 옮기면 좌측 탭 순서도 똑같이 바뀝니다.', items: [] },
+        { content: '<b>페이지 순서 변경</b> — 좌측에서 최상위 페이지를 <b>드래그</b>하거나, <b>⋯ → 위로/아래로</b>로 이동.', items: [] },
+        { content: '<b>계산표 · 파일 첨부</b> — 위 추가 메뉴에서 바로 사용.', items: [] },
+        { content: '<b>복제 · Markdown 내보내기 · 전체 백업(JSON)</b> — <b>⋯</b> 메뉴와 좌측 하단 ⤓ 버튼.', items: [] },
       ] } },
 
       { type: 'header', data: { text: '↕️ 3. 순서 바꾸기 (드래그)', level: 2 } },

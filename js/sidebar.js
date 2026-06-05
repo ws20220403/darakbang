@@ -5,6 +5,7 @@
 const Sidebar = (() => {
 
   let _expandedIds = new Set();
+  let _dragRootId = null;   // 루트 페이지 드래그&드롭 진행 중 id (요구사항 3)
 
   /* =========================================================
      초기화
@@ -19,6 +20,9 @@ const Sidebar = (() => {
     // 새 페이지 버튼
     document.getElementById('btn-new-page')?.addEventListener('click', () => App.createNewPage());
     document.getElementById('btn-welcome-new-page')?.addEventListener('click', () => App.createNewPage());
+
+    // 전체 백업(JSON) 버튼 (요구사항 5)
+    document.getElementById('btn-backup')?.addEventListener('click', () => App.exportFullBackup());
 
     // 검색
     const searchInput = document.getElementById('search-input');
@@ -131,9 +135,11 @@ const Sidebar = (() => {
     moreBtn.setAttribute('aria-label', '더보기');
     moreBtn.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>`;
 
+    const ctxOpts = { allowReorder: depth === 0 && !meta.parentId };
+
     moreBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      _openContextMenu(e, meta);
+      _openContextMenu(e, meta, ctxOpts);
     });
 
     // 클릭으로 페이지 이동
@@ -142,7 +148,7 @@ const Sidebar = (() => {
     // 우클릭 컨텍스트 메뉴
     row.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-      _openContextMenu(e, meta);
+      _openContextMenu(e, meta, ctxOpts);
     });
 
     row.appendChild(expandBtn);
@@ -150,6 +156,9 @@ const Sidebar = (() => {
     row.appendChild(titleEl);
     row.appendChild(moreBtn);
     li.appendChild(row);
+
+    // 루트 페이지만 드래그&드롭으로 순서 변경 (요구사항 3 — 하위페이지 제외)
+    if (depth === 0 && !meta.parentId) _makeRootDraggable(li, row, meta);
 
     // Children
     if (children.length) {
@@ -167,6 +176,68 @@ const Sidebar = (() => {
     }
 
     return li;
+  }
+
+  /* =========================================================
+     루트 페이지 드래그&드롭 순서 변경 (요구사항 3)
+     - 루트(li[data-depth=0])만 draggable. 하위페이지엔 적용하지 않음.
+  ========================================================= */
+  function _clearDropMarkers() {
+    document.querySelectorAll('.nav-item.drop-before, .nav-item.drop-after')
+      .forEach(el => el.classList.remove('drop-before', 'drop-after'));
+  }
+
+  function _makeRootDraggable(li, row, meta) {
+    row.setAttribute('draggable', 'true');
+
+    row.addEventListener('dragstart', (e) => {
+      _dragRootId = meta.id;
+      li.classList.add('nav-dragging');
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        try { e.dataTransfer.setData('text/plain', meta.id); } catch {}
+      }
+    });
+
+    row.addEventListener('dragend', () => {
+      _dragRootId = null;
+      li.classList.remove('nav-dragging');
+      _clearDropMarkers();
+    });
+
+    li.addEventListener('dragover', (e) => {
+      if (!_dragRootId || _dragRootId === meta.id) return;
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      const rect = row.getBoundingClientRect();
+      const after = (e.clientY - rect.top) > rect.height / 2;
+      _clearDropMarkers();
+      li.classList.add(after ? 'drop-after' : 'drop-before');
+    });
+
+    li.addEventListener('dragleave', (e) => {
+      // li 바깥으로 나갈 때만 해제 (자식으로 이동은 무시)
+      if (!li.contains(e.relatedTarget)) li.classList.remove('drop-before', 'drop-after');
+    });
+
+    li.addEventListener('drop', async (e) => {
+      if (!_dragRootId || _dragRootId === meta.id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const after = li.classList.contains('drop-after');
+      const draggedId = _dragRootId;
+      _clearDropMarkers();
+
+      // after 이면 meta 다음 루트 앞에 삽입, 아니면 meta 앞에 삽입
+      let beforeId = meta.id;
+      if (after) {
+        const roots = Workspace.getRootPages();
+        const idx = roots.findIndex(r => r.id === meta.id);
+        beforeId = (idx >= 0 && roots[idx + 1]) ? roots[idx + 1].id : null;
+      }
+      await Workspace.reorderRootPage(draggedId, beforeId);
+      render();
+    });
   }
 
   /* =========================================================
@@ -233,11 +304,34 @@ const Sidebar = (() => {
   /* =========================================================
      컨텍스트 메뉴
   ========================================================= */
-  function _openContextMenu(e, meta) {
+  function _openContextMenu(e, meta, opts = {}) {
     const isFav = Workspace.isFavorite(meta.id);
+
+    // 루트 페이지에서만 위로/아래로 표시 (요구사항 3)
+    const allowReorder = !!opts.allowReorder && !meta.parentId;
+    const rootIdx   = allowReorder ? Workspace.getRootIndex(meta.id) : -1;
+    const rootCount = allowReorder ? Workspace.getRootCount() : 0;
 
     UI.openContextMenu(e.clientX, e.clientY, {
       favorited: isFav,
+      showMove:    allowReorder,
+      canMoveUp:   allowReorder && rootIdx > 0,
+      canMoveDown: allowReorder && rootIdx >= 0 && rootIdx < rootCount - 1,
+
+      onMoveUp: async () => {
+        if (await Workspace.moveRootPage(meta.id, -1)) render();
+      },
+      onMoveDown: async () => {
+        if (await Workspace.moveRootPage(meta.id, +1)) render();
+      },
+
+      onDuplicate: async () => {
+        await App.duplicatePage(meta.id);
+      },
+
+      onExport: async () => {
+        await App.exportPageMarkdown(meta.id);
+      },
 
       onRename: async () => {
         const newTitle = await UI.prompt('이름 바꾸기', meta.title || '제목 없음', '페이지 이름');
@@ -276,7 +370,13 @@ const Sidebar = (() => {
         if (!confirmed) return;
 
         const currentId = Workspace.getCurrentPageId();
+        const parentId  = meta.parentId;   // 삭제 전에 부모 기록
         await Workspace.deletePage(meta.id);
+
+        // 부모 본문에 남은 '하위 문서' 링크(죽은 링크) 정리
+        if (parentId) {
+          try { await App.removeChildLinkFromParent(parentId, meta.id); } catch {}
+        }
         render();
 
         // 현재 페이지가 삭제됐으면 Welcome 화면으로

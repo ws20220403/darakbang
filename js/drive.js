@@ -289,30 +289,18 @@ const Drive = (() => {
   }
 
   /* =========================================================
-     이미지 업로드 + Blob URL
+     바이너리(이미지/일반 파일) 업로드 + Blob URL
   ========================================================= */
-  async function uploadImage(file) {
+
+  // 공통: 임의의 바이너리를 images/ 폴더에 multipart 업로드
+  async function _uploadBinary(file, fileName, mimeType) {
     const folderId = _cache.imagesFolderId;
     if (!folderId) throw new Error('폴더 초기화 필요');
 
-    // 확장자 추출 (클립보드 이미지는 name이 없을 수 있음)
-    const ext = (file.name || '').split('.').pop() || 'jpg';
-    const imageId = UI.generateId();
-    const fileName = `${imageId}.${ext}`;
-    const mimeType = file.type || 'image/jpeg';
-
-    const boundary = '-------314159265358979323846img';
-
-    const metadata = JSON.stringify({
-      name: fileName,
-      mimeType,
-      parents: [folderId],
-    });
-
-    // 파일을 ArrayBuffer로 읽기
+    const boundary = '-------314159265358979323846bin';
+    const metadata = JSON.stringify({ name: fileName, mimeType, parents: [folderId] });
     const arrayBuffer = await file.arrayBuffer();
 
-    // Multipart body 구성 (Uint8Array 연결)
     const enc = new TextEncoder();
     const partHead = enc.encode(
       `\r\n--${boundary}\r\n` +
@@ -340,11 +328,27 @@ const Drive = (() => {
 
     if (!res.ok) {
       const errText = await res.text();
-      throw new Error(`이미지 업로드 실패: ${res.status} ${errText}`);
+      throw new Error(`업로드 실패: ${res.status} ${errText}`);
     }
+    return await res.json();
+  }
 
-    const result = await res.json();
+  async function uploadImage(file) {
+    // 확장자 추출 (클립보드 이미지는 name이 없을 수 있음)
+    const ext = (file.name || '').split('.').pop() || 'jpg';
+    const imageId = UI.generateId();
+    const fileName = `${imageId}.${ext}`;
+    const mimeType = file.type || 'image/jpeg';
+    const result = await _uploadBinary(file, fileName, mimeType);
     return { fileId: result.id, fileName, imageId };
+  }
+
+  // 임의 파일(PDF/Word/Excel/hwp 등) — 드라이브에는 원본 이름을 보존해 올린다
+  async function uploadFile(file) {
+    const safeName = (file.name || `file-${UI.generateId()}`).replace(/[\r\n]+/g, ' ').slice(0, 120);
+    const mimeType = file.type || 'application/octet-stream';
+    const result = await _uploadBinary(file, safeName, mimeType);
+    return { fileId: result.id, name: file.name || safeName, size: file.size || 0, mime: mimeType };
   }
 
   async function getImageBlobUrl(fileId) {
@@ -353,11 +357,12 @@ const Drive = (() => {
       headers: { Authorization: `Bearer ${token}` }
     });
 
-    if (!res.ok) throw new Error(`이미지 로드 실패: ${res.status}`);
+    if (!res.ok) throw new Error(`파일 로드 실패: ${res.status}`);
 
     const blob = await res.blob();
     return URL.createObjectURL(blob);
   }
+  const getFileBlobUrl = getImageBlobUrl; // 동일 구현(드라이브는 alt=media 로 어떤 파일이든 받음)
 
   /* =========================================================
      PUBLIC API
@@ -373,6 +378,8 @@ const Drive = (() => {
     deletePage,
     uploadImage,
     getImageBlobUrl,
+    uploadFile,
+    getFileBlobUrl,
     deleteFile,
     get cache() { return _cache; },
   };

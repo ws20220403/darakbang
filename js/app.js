@@ -287,6 +287,8 @@ const App = (() => {
     EditorManager.destroy();
     const mobileTitleEl = document.getElementById('mobile-page-title');
     if (mobileTitleEl) mobileTitleEl.textContent = '다락방';
+    const wc = document.getElementById('word-count');
+    if (wc) wc.textContent = '';
     Sidebar.setActivePage(null);
   }
 
@@ -333,8 +335,9 @@ const App = (() => {
       _scheduleAutosave();
     });
 
-    // 에디터 내용 변경 → 자동 저장 예약
+    // 에디터 내용 변경 → 자동 저장 예약 + 단어 수 갱신
     document.addEventListener('darakbang:editorChanged', _scheduleAutosave);
+    document.addEventListener('darakbang:editorChanged', _updateWordCount);
 
     // 엔터 키로 에디터 포커스 이동
     titleInput?.addEventListener('keydown', (e) => {
@@ -469,6 +472,9 @@ const App = (() => {
     // 에디터 초기화
     EditorManager.init(pageData);
     Workspace.markClean();
+
+    // 단어 수 갱신 (에디터가 준비된 뒤)
+    setTimeout(_updateWordCount, 250);
   }
 
   /* =========================================================
@@ -660,6 +666,11 @@ const App = (() => {
       const result = await Workspace.createPage(parentId);
       if (!result) return null;
 
+      // [v3] 하위 페이지를 만들면 부모 본문 맨 아래에 '하위 문서' 링크 블록을 추가
+      if (parentId) {
+        await _addChildLinkToParent(parentId, result.meta.id);
+      }
+
       Sidebar.render();
       await navigateToPage(result.meta.id);
 
@@ -685,12 +696,161 @@ const App = (() => {
   }
 
   /* =========================================================
+     부모 본문 ↔ 하위문서 링크 연결 (요구사항 1)
+     - 부모가 현재 열려있으면: 라이브 에디터 맨 끝에 블록 삽입 → 페이지 이동 시 자동 저장
+     - 부모가 닫혀있으면: 저장된 본문(JSON)에 직접 추가
+  ========================================================= */
+  async function _addChildLinkToParent(parentId, childId) {
+    const ed = EditorManager.instance;
+    if (parentId === Workspace.getCurrentPageId() && ed) {
+      try {
+        await ed.isReady;
+        const count = ed.blocks.getBlocksCount();
+        ed.blocks.insert('pageLink', { pageId: childId }, {}, count, false);
+        Workspace.markDirty();   // navigateToPage 가 부모를 자동 저장
+        return;
+      } catch (e) {
+        console.warn('라이브 에디터 링크 삽입 실패 → 저장본에 직접 추가:', e);
+      }
+    }
+    await Workspace.appendChildLink(parentId, childId);
+  }
+
+  /* 자식 삭제 시 부모 본문의 죽은 링크 제거 */
+  async function removeChildLinkFromParent(parentId, childId) {
+    const ed = EditorManager.instance;
+    if (parentId === Workspace.getCurrentPageId() && ed) {
+      try {
+        await ed.isReady;
+        const out = await ed.save();
+        const indices = [];
+        (out.blocks || []).forEach((b, i) => {
+          if (b.type === 'pageLink' && b.data && b.data.pageId === childId) indices.push(i);
+        });
+        indices.sort((a, b) => b - a).forEach(i => { try { ed.blocks.delete(i); } catch {} });
+        if (indices.length) Workspace.markDirty();
+        return;
+      } catch (e) {
+        console.warn('라이브 에디터 링크 제거 실패 → 저장본에서 제거:', e);
+      }
+    }
+    await Workspace.removeChildLink(parentId, childId);
+  }
+
+  /* =========================================================
+     페이지 복제 (요구사항 5)
+  ========================================================= */
+  async function duplicatePage(pageId) {
+    // 현재 보고 있는 페이지를 복제할 때 미저장분이 반영되도록 먼저 저장
+    if (pageId === Workspace.getCurrentPageId() && Workspace.isDirty()) {
+      await _savePage({ silent: true });
+    }
+    try {
+      const result = await Workspace.duplicatePage(pageId);
+      if (!result) { UI.toast('복제할 수 없습니다.', 'error'); return null; }
+      // 하위 페이지 복제면 부모 본문 맨 아래에 링크를 추가해 사이드바/본문 일치 (요구사항 1·2)
+      if (result.meta.parentId) {
+        await _addChildLinkToParent(result.meta.parentId, result.meta.id);
+      }
+      Sidebar.render();
+      await navigateToPage(result.meta.id);
+      UI.toast('페이지를 복제했습니다.', 'success');
+      return result;
+    } catch (e) {
+      console.error('복제 실패:', e);
+      UI.toast('복제에 실패했습니다.', 'error');
+      return null;
+    }
+  }
+
+  /* =========================================================
+     내보내기 (요구사항 5) — Markdown / 전체 백업(JSON)
+  ========================================================= */
+  function _downloadFile(filename, content, mime) {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function _safeFileName(name) {
+    return (name || '제목 없음').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 80).trim() || 'page';
+  }
+
+  async function exportPageMarkdown(pageId) {
+    try {
+      const data = await Workspace.loadPage(pageId);
+      const meta = Workspace.getPageMeta(pageId);
+      const title = (meta?.title || data?.title || '제목 없음');
+      const md = Exporter.toMarkdown(title, data?.editorData);
+      _downloadFile(_safeFileName(title) + '.md', md, 'text/markdown;charset=utf-8');
+      UI.toast('Markdown 파일로 내보냈습니다.', 'success');
+    } catch (e) {
+      console.error('Markdown 내보내기 실패:', e);
+      UI.toast('내보내기에 실패했습니다.', 'error');
+    }
+  }
+
+  async function exportFullBackup() {
+    const toastEl = UI.toast('전체 백업을 준비하는 중...', 'info', 60000);
+    try {
+      const metas = Workspace.getAllPagesMeta();
+      const pages = {};
+      for (const m of metas) {
+        try { pages[m.id] = await Workspace.loadPage(m.id); }
+        catch (e) { console.warn('백업: 페이지 로드 실패', m.id, e); }
+      }
+      const backup = {
+        app: 'darakbang',
+        backupVersion: 3,
+        exportedAt: new Date().toISOString(),
+        workspace: Workspace.workspace,
+        settings: Workspace.settings,
+        pages,
+      };
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      _downloadFile(`다락방_백업_${stamp}.json`, JSON.stringify(backup, null, 2), 'application/json');
+      toastEl?.remove();
+      UI.toast('전체 백업(JSON)을 내려받았습니다.', 'success');
+    } catch (e) {
+      console.error('전체 백업 실패:', e);
+      toastEl?.remove();
+      UI.toast('백업에 실패했습니다.', 'error');
+    }
+  }
+
+  /* =========================================================
+     단어/글자 수 (요구사항 5)
+  ========================================================= */
+  async function _updateWordCount() {
+    const el = document.getElementById('word-count');
+    if (!el) return;
+    if (!Workspace.getCurrentPageId()) { el.textContent = ''; return; }
+    try {
+      const data = await EditorManager.getEditorData();
+      const text = Exporter.plainText(data).replace(/\s+/g, ' ').trim();
+      const chars = text.length;
+      const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+      el.textContent = `${words}단어 · ${chars}자`;
+    } catch { /* 무시 */ }
+  }
+
+  /* =========================================================
      PUBLIC API
   ========================================================= */
   return {
     start,
     navigateToPage,
     createNewPage,
+    removeChildLinkFromParent,
+    duplicatePage,
+    exportPageMarkdown,
+    exportFullBackup,
     showWelcome,
   };
 })();
