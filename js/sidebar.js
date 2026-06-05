@@ -234,19 +234,23 @@ const Sidebar = (() => {
      컨텍스트 메뉴
   ========================================================= */
   function _openContextMenu(e, meta) {
-    const isFav = Workspace.isFavorite(meta.id);
+    const isFav    = Workspace.isFavorite(meta.id);
+    const moveInfo = Workspace.getPageMoveInfo(meta.id);
 
     UI.openContextMenu(e.clientX, e.clientY, {
-      favorited: isFav,
+      favorited:    isFav,
+      canMoveUp:    moveInfo.canMoveUp,
+      canMoveDown:  moveInfo.canMoveDown,
+      canPromote:   moveInfo.canPromote,
+      canDemote:    moveInfo.canDemote,
 
       onRename: async () => {
-        const newTitle = await UI.prompt('이름 바꾸기', meta.title || '제목 없음', '페이지 이름');
-        if (newTitle) {
-          await Workspace.renamePage(meta.id, newTitle);
-          // 현재 페이지라면 제목도 업데이트
+        const newTitle = prompt('새 페이지 이름:', meta.title || '제목 없음');
+        if (newTitle !== null && newTitle.trim() !== '') {
+          await Workspace.renamePage(meta.id, newTitle.trim());
           if (meta.id === Workspace.getCurrentPageId()) {
             const titleInput = document.getElementById('page-title-input');
-            if (titleInput) titleInput.textContent = newTitle;
+            if (titleInput) titleInput.textContent = newTitle.trim();
           }
           render();
         }
@@ -261,13 +265,43 @@ const Sidebar = (() => {
       onNewSubpage: async () => {
         const result = await App.createNewPage(meta.id);
         if (result) {
+          const childId  = result.meta.id;
+          const parentId = meta.id;
+
+          // 부모 페이지 최하단에 하위 페이지 링크 자동 추가
+          if (parentId === Workspace.getCurrentPageId()) {
+            await App.insertChildLinkToCurrentEditor(childId);
+          } else {
+            await Workspace.appendChildLinkBlock(parentId, childId);
+          }
+
           // 부모 펼치기
-          if (!_expandedIds.has(meta.id)) {
-            const liEl = document.querySelector(`[data-page-id="${meta.id}"]`);
-            if (liEl) _toggleExpand(meta.id, liEl);
+          if (!_expandedIds.has(parentId)) {
+            const liEl = document.querySelector(`[data-page-id="${parentId}"]`);
+            if (liEl) _toggleExpand(parentId, liEl);
           }
           render();
         }
+      },
+
+      onMoveUp: async () => {
+        await Workspace.movePageUp(meta.id);
+        render();
+      },
+
+      onMoveDown: async () => {
+        await Workspace.movePageDown(meta.id);
+        render();
+      },
+
+      onPromote: async () => {
+        const ok = await Workspace.promotePage(meta.id);
+        if (ok) render();
+      },
+
+      onDemote: async () => {
+        const ok = await Workspace.demotePage(meta.id);
+        if (ok) render();
       },
 
       onDelete: async () => {
@@ -279,7 +313,6 @@ const Sidebar = (() => {
         await Workspace.deletePage(meta.id);
         render();
 
-        // 현재 페이지가 삭제됐으면 Welcome 화면으로
         if (currentId === meta.id) {
           App.showWelcome();
         }

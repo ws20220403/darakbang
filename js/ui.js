@@ -123,18 +123,14 @@ const UI = (() => {
   /* =========================================================
      MODAL — 링크 입력
   ========================================================= */
-  // 범용 입력 모달 (브라우저 기본 prompt() 대체)
-  function prompt(title, defaultValue = '', placeholder = '') {
+  function promptLink(defaultUrl = '') {
     return new Promise((resolve) => {
-      const overlay    = document.getElementById('modal-prompt');
-      const titleEl    = document.getElementById('modal-prompt-title');
-      const input      = document.getElementById('modal-prompt-input');
-      const btnCancel  = document.getElementById('modal-prompt-cancel');
-      const btnConfirm = document.getElementById('modal-prompt-confirm');
+      const overlay = document.getElementById('modal-link');
+      const input   = document.getElementById('modal-link-input');
+      const btnCancel  = document.getElementById('modal-link-cancel');
+      const btnConfirm = document.getElementById('modal-link-confirm');
 
-      titleEl.textContent = title || '입력';
-      input.value = defaultValue || '';
-      input.placeholder = placeholder || '';
+      input.value = defaultUrl;
       overlay.classList.remove('hidden');
       overlay.removeAttribute('aria-hidden');
       input.focus();
@@ -165,10 +161,6 @@ const UI = (() => {
     });
   }
 
-  function promptLink(defaultUrl = '') {
-    return prompt('링크 삽입', defaultUrl, 'https://...');
-  }
-
   /* =========================================================
      EMOJI PICKER
   ========================================================= */
@@ -195,31 +187,6 @@ const UI = (() => {
     '📡','🔭','🌍','🌎','🌏','🗺️','🧭','⛰️','🏔️','🌋',
     '🦋','🐝','🐛','🦗','🕷️','🦂','🐢','🦎','🐍','🦕',
   ];
-
-  // 이모지 검색 키워드 (행=10개 단위, EMOJIS 배열 카테고리와 일치)
-  const EMOJI_KEYWORDS = [
-    '문서 파일 폴더 차트 그래프 document file folder chart',     // 📄📃📋📁📂🗂️📑📊📈📉
-    '메모 쓰기 펜 핀 달력 일정 note write pen pin calendar',      // 📝✏️🖊️🖋️🖌️📌📍🗓️📅📆
-    '집 건물 home house building 빌딩',                            // 🏠🏡🏢🏣...
-    '별 반짝 불 아이디어 목표 예술 star fire idea art sparkle',   // ⭐🌟💫✨🔥💡🎯🎪🎨🎭
-    '컴퓨터 기기 폰 노트북 device computer phone laptop',         // 💻🖥️...📱📲
-    '책 공부 독서 book study read 노트',                          // 📚📖📗...
-    '열쇠 자물쇠 보안 링크 클립 key lock link security',          // 🔑🗝️🔒🔓🔏🔐🔗📎🖇️📏
-    '말풍선 대화 알림 종 채팅 speech chat bell talk',             // 💬💭🗨️🗯️📢📣🔔🔕🔇🔊
-    '날씨 해 달 비 무지개 weather sun moon rain rainbow',         // 🌈☀️🌙⛅...
-    '꽃 식물 자연 flower plant nature 잎',                        // 🌺🌸🌼🌻🌹🌷💐🍀🌿🌱
-    '동물 강아지 고양이 곰 토끼 animal dog cat bear',             // 🐶🐱🐭🐹🐰🦊🐻🐼🐨🐯
-    '하트 사랑 마음 heart love',                                  // ❤️🧡💛💚💙💜🖤🤍🤎💔
-    '얼굴 웃음 표정 emoji face smile happy 감정',                 // 😀😃😄😁😆😅😂🤣😊😇
-    '과일 음식 사과 fruit food apple 먹을것',                     // 🍎🍊🍋🍇🍓🍑🍒🍌🍉🍍
-    '음악 노래 악기 music song guitar 기타',                      // 🎵🎶🎸🥁🎹🎺🎻🎤🎧🎼
-    '이동 차 비행기 로켓 배 transport car plane rocket',          // 🚀✈️🚂🚗🚕🛸🛶⛵🚢🚁
-    '상 트로피 보석 왕관 우승 award trophy crown win medal',      // 💎👑🏆🥇🥈🥉🎖️🏅🎗️🎀
-    '과학 실험 연구 의학 science lab research medicine',          // 🔬🔭⚗️🧬🧪🧫🧲💊💉🩺
-    '지구 세계 지도 우주 earth world map space globe',            // 📡🔭🌍🌎🌏🗺️🧭⛰️🏔️🌋
-    '곤충 벌레 나비 bug insect butterfly',                        // 🦋🐝🐛🦗🕷️🦂🐢🦎🐍🦕
-  ];
-  const emojiKeywords = (i) => EMOJI_KEYWORDS[Math.floor(i / 10)] || '';
 
   let emojiCallback = null;
   let emojiPickerOpen = false;
@@ -251,11 +218,11 @@ const UI = (() => {
       const q = searchInput.value.trim().toLowerCase();
       if (!q) {
         renderEmojis(EMOJIS);
-        return;
+      } else {
+        // 간단한 유니코드 필터 (실제 이름은 없으므로 인덱스로 필터)
+        const filtered = EMOJIS.filter((_, i) => String(i).includes(q) || EMOJIS[i].includes(q));
+        renderEmojis(filtered.length ? filtered : EMOJIS.slice(0, 40));
       }
-      // 카테고리 키워드(한/영) 또는 이모지 자체로 검색
-      const filtered = EMOJIS.filter((e, i) => e === q || emojiKeywords(i).toLowerCase().includes(q));
-      renderEmojis(filtered);
     });
 
     // 외부 클릭 닫기
@@ -314,10 +281,13 @@ const UI = (() => {
   function openContextMenu(x, y, options) {
     const menu = document.getElementById('context-menu');
 
-    // options: { rename, favorite, favorited, newSubpage, delete }
     const ctxRename    = document.getElementById('ctx-rename');
     const ctxFavorite  = document.getElementById('ctx-favorite');
     const ctxNewSub    = document.getElementById('ctx-new-subpage');
+    const ctxMoveUp    = document.getElementById('ctx-move-up');
+    const ctxMoveDown  = document.getElementById('ctx-move-down');
+    const ctxPromote   = document.getElementById('ctx-promote');
+    const ctxDemote    = document.getElementById('ctx-demote');
     const ctxDelete    = document.getElementById('ctx-delete');
 
     // 즐겨찾기 텍스트 업데이트
@@ -326,13 +296,19 @@ const UI = (() => {
       ${options.favorited ? '즐겨찾기 제거' : '즐겨찾기에 추가'}
     `;
 
+    // 이동 관련 항목 표시/숨김
+    ctxMoveUp?.classList.toggle('hidden',  !options.canMoveUp);
+    ctxMoveDown?.classList.toggle('hidden', !options.canMoveDown);
+    ctxPromote?.classList.toggle('hidden',  !options.canPromote);
+    ctxDemote?.classList.toggle('hidden',   !options.canDemote);
+
     // 위치
     let left = x;
     let top  = y;
-    const menuW = 180;
-    const menuH = 160;
-    if (left + menuW > window.innerWidth) left = x - menuW;
-    if (top  + menuH > window.innerHeight) top = y - menuH;
+    const menuW = 210;
+    const menuH = menu.offsetHeight || 240;
+    if (left + menuW > window.innerWidth)  left = x - menuW;
+    if (top  + menuH > window.innerHeight) top  = y - menuH;
 
     menu.style.left = `${Math.max(4, left)}px`;
     menu.style.top  = `${Math.max(4, top)}px`;
@@ -345,12 +321,20 @@ const UI = (() => {
       ctxRename.removeEventListener('click', onRename);
       ctxFavorite.removeEventListener('click', onFavorite);
       ctxNewSub.removeEventListener('click', onNewSub);
+      ctxMoveUp?.removeEventListener('click', onMoveUp);
+      ctxMoveDown?.removeEventListener('click', onMoveDown);
+      ctxPromote?.removeEventListener('click', onPromote);
+      ctxDemote?.removeEventListener('click', onDemote);
       ctxDelete.removeEventListener('click', onDelete);
     };
 
     const onRename   = () => { close(); options.onRename?.(); };
     const onFavorite = () => { close(); options.onFavorite?.(); };
     const onNewSub   = () => { close(); options.onNewSubpage?.(); };
+    const onMoveUp   = () => { close(); options.onMoveUp?.(); };
+    const onMoveDown = () => { close(); options.onMoveDown?.(); };
+    const onPromote  = () => { close(); options.onPromote?.(); };
+    const onDemote   = () => { close(); options.onDemote?.(); };
     const onDelete   = () => { close(); options.onDelete?.(); };
     const onDocClick = (e) => { if (!menu.contains(e.target)) close(); };
     const onKeydown  = (e) => { if (e.key === 'Escape') close(); };
@@ -358,6 +342,10 @@ const UI = (() => {
     ctxRename.addEventListener('click', onRename);
     ctxFavorite.addEventListener('click', onFavorite);
     ctxNewSub.addEventListener('click', onNewSub);
+    ctxMoveUp?.addEventListener('click', onMoveUp);
+    ctxMoveDown?.addEventListener('click', onMoveDown);
+    ctxPromote?.addEventListener('click', onPromote);
+    ctxDemote?.addEventListener('click', onDemote);
     ctxDelete.addEventListener('click', onDelete);
     document.addEventListener('click', onDocClick);
     document.addEventListener('keydown', onKeydown);
@@ -516,7 +504,6 @@ const UI = (() => {
     toast,
     confirmDelete,
     confirmUnsaved,
-    prompt,
     promptLink,
     openEmojiPicker,
     closeEmojiPicker,

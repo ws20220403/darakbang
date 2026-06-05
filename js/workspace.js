@@ -32,23 +32,22 @@ const Workspace = (() => {
   ========================================================= */
   async function init() {
     // 폴더 구조 초기화
-    await Storage.initFolderStructure();
+    await Drive.initFolderStructure();
 
     // workspace.json 로드
-    let ws = await Storage.readWorkspace();
-    let isNewWorkspace = false;
+    let ws = await Drive.readWorkspace();
     if (!ws) {
-      // 최초 실행: 새 workspace (배열을 새로 만들어 기본값 공유 방지)
-      ws = { version: '2.0', pages: [], rootPageOrder: [] };
-      isNewWorkspace = true;
+      // 최초 실행: workspace 생성
+      ws = { ...DEFAULT_WORKSPACE };
+      await Drive.writeWorkspace(ws);
     }
     _workspace = ws;
 
     // settings.json 로드
-    let settings = await Storage.readSettings();
+    let settings = await Drive.readSettings();
     if (!settings) {
-      settings = { ...DEFAULT_SETTINGS, favorites: [], expandedPages: [] };
-      await Storage.writeSettings(settings);
+      settings = { ...DEFAULT_SETTINGS };
+      await Drive.writeSettings(settings);
     }
     _settings = settings;
 
@@ -57,53 +56,20 @@ const Workspace = (() => {
       UI.applyTheme(_settings.theme);
     }
 
-    // 사용법 샘플 노트를 일반 페이지로 보장 (최초 1회, 모드별). 삭제하면 다시 만들지 않음.
-    void isNewWorkspace;
-    await _ensureUsagePage();
-
     return { workspace: _workspace, settings: _settings };
-  }
-
-  /* 사용법 페이지가 없으면 1회 생성 (데모는 시드, 실모드는 첫 실행/기존 사용자 모두 커버) */
-  async function _ensureUsagePage() {
-    if (typeof Samples === 'undefined') return;
-    const flagKey = 'darakbang_usage_seeded_' + (Storage.isDemo() ? 'demo' : 'drive');
-    if (localStorage.getItem(flagKey)) return;
-    const exists = _workspace.pages.some(p => p.title === Samples.USAGE_TITLE);
-    if (!exists) {
-      try { await _createStarterPage(); await _saveWorkspace(); }
-      catch (e) { console.warn('사용법 페이지 생성 실패:', e); return; }
-    }
-    try { localStorage.setItem(flagKey, '1'); } catch {}
-  }
-
-  /* "사용법" 샘플 페이지 생성 (일반 노트와 동일) */
-  async function _createStarterPage() {
-    if (typeof Samples === 'undefined') return;
-    const id = UI.generateId();
-    const now = new Date().toISOString();
-    const meta = { id, title: Samples.USAGE_TITLE, icon: Samples.USAGE_ICON, parentId: null, children: [], searchText: Samples.USAGE_SEARCH };
-    const pageData = {
-      id, title: meta.title, icon: meta.icon, coverImageId: null, parentId: null,
-      createdAt: now, updatedAt: now, editorData: Samples.usageEditorData(),
-    };
-    _workspace.pages.push(meta);
-    _workspace.rootPageOrder.push(id);
-    await Storage.writePage(id, pageData);
-    _pageCache[id] = pageData;
   }
 
   /* =========================================================
      workspace.json 저장
   ========================================================= */
   async function _saveWorkspace() {
-    return await Storage.writeWorkspace(_workspace);
+    return await Drive.writeWorkspace(_workspace);
   }
 
   async function _saveSettings() {
     // 현재 테마도 저장
     _settings.theme = document.documentElement.getAttribute('data-theme') || 'light';
-    return await Storage.writeSettings(_settings);
+    return await Drive.writeSettings(_settings);
   }
 
   /* =========================================================
@@ -118,17 +84,7 @@ const Workspace = (() => {
   }
 
   function getRootPages() {
-    const roots = _workspace.pages.filter(p => !p.parentId);
-    const order = _workspace.rootPageOrder || [];
-    // rootPageOrder 순서를 반영(없는 항목은 뒤로)
-    return roots.slice().sort((a, b) => {
-      const ia = order.indexOf(a.id);
-      const ib = order.indexOf(b.id);
-      if (ia === -1 && ib === -1) return 0;
-      if (ia === -1) return 1;
-      if (ib === -1) return -1;
-      return ia - ib;
-    });
+    return _workspace.pages.filter(p => !p.parentId);
   }
 
   function getChildren(parentId) {
@@ -208,7 +164,7 @@ const Workspace = (() => {
     }
 
     // Drive에 저장
-    await Storage.writePage(id, pageData);
+    await Drive.writePage(id, pageData);
     await _saveWorkspace();
 
     // 로컬 캐시
@@ -223,7 +179,7 @@ const Workspace = (() => {
   async function loadPage(pageId) {
     if (_pageCache[pageId]) return _pageCache[pageId];
 
-    const data = await Storage.readPage(pageId);
+    const data = await Drive.readPage(pageId);
     if (!data) throw new Error(`페이지를 찾을 수 없습니다: ${pageId}`);
 
     _pageCache[pageId] = data;
@@ -234,7 +190,7 @@ const Workspace = (() => {
      페이지 저장
   ========================================================= */
   async function savePage(pageId, editorData, title, icon, coverImageId) {
-    if (!UI.isOnline() && !Storage.isDemo()) {
+    if (!UI.isOnline()) {
       UI.toast('인터넷 연결이 필요합니다. 연결 후 저장해주세요.', 'warning', 5000);
       return false;
     }
@@ -244,21 +200,18 @@ const Workspace = (() => {
 
     // 다른 기기에서 먼저 저장한 변경을 조용히 덮어쓰지 않도록 방어합니다.
     // 로컬에서 마지막으로 읽은 updatedAt과 Drive의 현재 updatedAt이 다르면 저장을 중단합니다.
-    // (데모 모드는 단일 브라우저 저장이라 충돌 개념이 없으므로 건너뜁니다.)
-    if (!Storage.isDemo()) {
-      try {
-        const remote = await Storage.readPage(pageId);
-        if (
-          remote?.updatedAt &&
-          existing?.updatedAt &&
-          remote.updatedAt !== existing.updatedAt
-        ) {
-          UI.toast('다른 기기에서 먼저 저장된 변경이 있습니다. 이 페이지를 다시 열어 확인한 뒤 저장해주세요.', 'warning', 9000);
-          return false;
-        }
-      } catch (e) {
-        console.warn('원격 변경 확인 실패:', e);
+    try {
+      const remote = await Drive.readPage(pageId);
+      if (
+        remote?.updatedAt &&
+        existing?.updatedAt &&
+        remote.updatedAt !== existing.updatedAt
+      ) {
+        UI.toast('다른 기기에서 먼저 저장된 변경이 있습니다. 이 페이지를 다시 열어 확인한 뒤 저장해주세요.', 'warning', 9000);
+        return false;
       }
+    } catch (e) {
+      console.warn('원격 변경 확인 실패:', e);
     }
 
     const updated = {
@@ -276,10 +229,9 @@ const Workspace = (() => {
     if (meta) {
       meta.title = updated.title;
       meta.icon  = updated.icon;
-      meta.searchText = _extractText(editorData);   // 전체 텍스트 검색용 인덱스
     }
 
-    await Storage.writePage(pageId, updated);
+    await Drive.writePage(pageId, updated);
     await _saveWorkspace();
 
     _pageCache[pageId] = updated;
@@ -303,7 +255,7 @@ const Workspace = (() => {
 
     // Drive에서 파일 삭제
     try {
-      await Storage.deletePage(pageId);
+      await Drive.deletePage(pageId);
     } catch (e) {
       console.warn('페이지 파일 삭제 실패:', e);
     }
@@ -329,6 +281,203 @@ const Workspace = (() => {
 
     await _saveWorkspace();
     await _saveSettings();
+  }
+
+  /* =========================================================
+     페이지 순서/계층 이동
+  ========================================================= */
+  function _getSiblings(pageId) {
+    const meta = getPageMeta(pageId);
+    if (!meta) return [];
+    return _workspace.pages.filter(p => p.parentId === (meta.parentId || null));
+  }
+
+  async function movePageUp(pageId) {
+    const siblings = _getSiblings(pageId);
+    const pos = siblings.findIndex(p => p.id === pageId);
+    if (pos <= 0) return false;
+
+    const prevId = siblings[pos - 1].id;
+    const myIdx   = _workspace.pages.findIndex(p => p.id === pageId);
+    const prevIdx = _workspace.pages.findIndex(p => p.id === prevId);
+
+    const temp = _workspace.pages[myIdx];
+    _workspace.pages[myIdx]   = _workspace.pages[prevIdx];
+    _workspace.pages[prevIdx] = temp;
+
+    _syncRootPageOrder();
+    await _saveWorkspace();
+    return true;
+  }
+
+  async function movePageDown(pageId) {
+    const siblings = _getSiblings(pageId);
+    const pos = siblings.findIndex(p => p.id === pageId);
+    if (pos < 0 || pos >= siblings.length - 1) return false;
+
+    const nextId  = siblings[pos + 1].id;
+    const myIdx   = _workspace.pages.findIndex(p => p.id === pageId);
+    const nextIdx = _workspace.pages.findIndex(p => p.id === nextId);
+
+    const temp = _workspace.pages[myIdx];
+    _workspace.pages[myIdx]   = _workspace.pages[nextIdx];
+    _workspace.pages[nextIdx] = temp;
+
+    _syncRootPageOrder();
+    await _saveWorkspace();
+    return true;
+  }
+
+  async function promotePage(pageId) {
+    const meta = getPageMeta(pageId);
+    if (!meta || !meta.parentId) return false;
+
+    const parentMeta = getPageMeta(meta.parentId);
+    if (!parentMeta) return false;
+
+    const grandParentId = parentMeta.parentId || null;
+
+    // 부모의 children에서 제거
+    parentMeta.children = (parentMeta.children || []).filter(id => id !== pageId);
+
+    // 조부모(또는 루트)에 삽입 — 부모 바로 뒤
+    if (grandParentId) {
+      const gpMeta = getPageMeta(grandParentId);
+      if (gpMeta) {
+        if (!gpMeta.children) gpMeta.children = [];
+        const parentPos = gpMeta.children.indexOf(parentMeta.id);
+        if (parentPos >= 0) gpMeta.children.splice(parentPos + 1, 0, pageId);
+        else gpMeta.children.push(pageId);
+      }
+    } else {
+      const parentPos = (_workspace.rootPageOrder || []).indexOf(parentMeta.id);
+      if (parentPos >= 0) _workspace.rootPageOrder.splice(parentPos + 1, 0, pageId);
+      else _workspace.rootPageOrder.push(pageId);
+    }
+
+    // parentId 변경
+    meta.parentId = grandParentId;
+    if (_pageCache[pageId]) _pageCache[pageId].parentId = grandParentId;
+
+    // pages 배열 순서: 부모 바로 다음으로 이동
+    _movePagesArrayAfter(pageId, parentMeta.id);
+    _syncRootPageOrder();
+    await _saveWorkspace();
+    if (_pageCache[pageId]) await Drive.writePage(pageId, _pageCache[pageId]);
+    return true;
+  }
+
+  async function demotePage(pageId) {
+    const meta = getPageMeta(pageId);
+    if (!meta) return false;
+
+    const siblings = _getSiblings(pageId);
+    const pos = siblings.findIndex(p => p.id === pageId);
+    if (pos <= 0) return false;
+
+    const newDepth = getDepth(pageId) + 1;
+    if (newDepth >= 5) {
+      UI.toast('최대 5단계까지만 중첩 가능합니다.', 'warning');
+      return false;
+    }
+
+    const prevSiblingId   = siblings[pos - 1].id;
+    const prevSiblingMeta = getPageMeta(prevSiblingId);
+    if (!prevSiblingMeta) return false;
+
+    // 현재 부모(또는 루트)에서 제거
+    if (meta.parentId) {
+      const parentMeta = getPageMeta(meta.parentId);
+      if (parentMeta) parentMeta.children = (parentMeta.children || []).filter(id => id !== pageId);
+    } else {
+      _workspace.rootPageOrder = (_workspace.rootPageOrder || []).filter(id => id !== pageId);
+    }
+
+    // 이전 형제의 children 마지막에 추가
+    if (!prevSiblingMeta.children) prevSiblingMeta.children = [];
+    prevSiblingMeta.children.push(pageId);
+
+    // parentId 변경
+    meta.parentId = prevSiblingId;
+    if (_pageCache[pageId]) _pageCache[pageId].parentId = prevSiblingId;
+
+    // pages 배열 순서: 이전 형제의 마지막 자손 다음으로
+    const lastDescIdx = _lastDescendantIndex(prevSiblingId);
+    const myIdx = _workspace.pages.findIndex(p => p.id === pageId);
+    if (myIdx >= 0) {
+      const [removed] = _workspace.pages.splice(myIdx, 1);
+      const insertAt  = _lastDescendantIndex(prevSiblingId) + 1;
+      _workspace.pages.splice(insertAt, 0, removed);
+    }
+
+    _syncRootPageOrder();
+    await _saveWorkspace();
+    if (_pageCache[pageId]) await Drive.writePage(pageId, _pageCache[pageId]);
+    return true;
+  }
+
+  function _movePagesArrayAfter(pageId, anchorId) {
+    const myIdx     = _workspace.pages.findIndex(p => p.id === pageId);
+    const anchorIdx = _workspace.pages.findIndex(p => p.id === anchorId);
+    if (myIdx < 0 || anchorIdx < 0 || myIdx === anchorIdx + 1) return;
+    const [removed] = _workspace.pages.splice(myIdx, 1);
+    const newAnchor = _workspace.pages.findIndex(p => p.id === anchorId);
+    _workspace.pages.splice(newAnchor + 1, 0, removed);
+  }
+
+  function _lastDescendantIndex(pageId) {
+    let idx = _workspace.pages.findIndex(p => p.id === pageId);
+    const children = _workspace.pages.filter(p => p.parentId === pageId);
+    for (const child of children) {
+      const childLast = _lastDescendantIndex(child.id);
+      if (childLast > idx) idx = childLast;
+    }
+    return idx;
+  }
+
+  function _syncRootPageOrder() {
+    _workspace.rootPageOrder = _workspace.pages.filter(p => !p.parentId).map(p => p.id);
+  }
+
+  /* =========================================================
+     하위 페이지 링크 블록 자동 추가 (사이드바에서 생성 시)
+  ========================================================= */
+  async function appendChildLinkBlock(parentId, childId) {
+    try {
+      const pageData = await loadPage(parentId);
+      if (!pageData) return false;
+
+      const blocks = (pageData.editorData?.blocks || []).slice();
+      blocks.push({ type: 'pageLink', data: { pageId: childId } });
+
+      const updated = {
+        ...pageData,
+        editorData: { ...(pageData.editorData || {}), blocks },
+        updatedAt: new Date().toISOString(),
+      };
+
+      _pageCache[parentId] = updated;
+      await Drive.writePage(parentId, updated);
+      return true;
+    } catch (e) {
+      console.error('하위 페이지 링크 추가 실패:', e);
+      return false;
+    }
+  }
+
+  /* =========================================================
+     이동 가능 여부 조회
+  ========================================================= */
+  function getPageMoveInfo(pageId) {
+    const siblings = _getSiblings(pageId);
+    const pos      = siblings.findIndex(p => p.id === pageId);
+    const meta     = getPageMeta(pageId);
+    return {
+      canMoveUp:   pos > 0,
+      canMoveDown: pos < siblings.length - 1,
+      canPromote:  !!(meta?.parentId),
+      canDemote:   pos > 0 && getDepth(pageId) < 4,
+    };
   }
 
   /* =========================================================
@@ -424,43 +573,8 @@ const Workspace = (() => {
     if (!query) return [];
     const q = query.toLowerCase();
     return _workspace.pages.filter(p =>
-      (p.title && p.title.toLowerCase().includes(q)) ||
-      (p.searchText && p.searchText.toLowerCase().includes(q))
+      p.title && p.title.toLowerCase().includes(q)
     );
-  }
-
-  /* 본문 블록에서 평문 텍스트 추출 (검색 인덱스용) */
-  function _extractText(editorData) {
-    if (!editorData || !editorData.blocks) return '';
-    const strip = (html) => {
-      if (!html) return '';
-      const d = document.createElement('div');
-      d.innerHTML = html;
-      return d.textContent || '';
-    };
-    const parts = [];
-    for (const b of editorData.blocks) {
-      const d = b.data || {};
-      switch (b.type) {
-        case 'paragraph': case 'header': case 'quote': case 'callout': case 'toggle':
-          parts.push(strip(d.text), strip(d.title), strip(d.content), strip(d.caption));
-          break;
-        case 'code': parts.push(d.code || ''); break;
-        case 'checklist': (d.items || []).forEach(i => parts.push(strip(i.text))); break;
-        case 'list': {
-          const walk = (items) => (items || []).forEach(it => {
-            parts.push(strip(typeof it === 'string' ? it : it.content));
-            if (it && it.items) walk(it.items);
-          });
-          walk(d.items);
-          break;
-        }
-        case 'table': (d.content || []).forEach(row => (row || []).forEach(c => parts.push(strip(c)))); break;
-        case 'bookmark': parts.push(d.title || '', d.url || ''); break;
-        default: break;
-      }
-    }
-    return parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim().slice(0, 5000);
   }
 
   /* =========================================================
@@ -491,6 +605,12 @@ const Workspace = (() => {
     getCurrentPageId,
     setCurrentPageId,
     searchPages,
+    movePageUp,
+    movePageDown,
+    promotePage,
+    demotePage,
+    appendChildLinkBlock,
+    getPageMoveInfo,
     get workspace() { return _workspace; },
     get settings()  { return _settings; },
   };

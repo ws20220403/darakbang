@@ -14,26 +14,6 @@ const App = (() => {
   let _currentCoverImageId = null;
   let _globalEventsBound   = false;  // 중복 바인딩 방지
   let _coverResizeHandler  = null;
-  let _autosaveTimer       = null;   // 디바운스 자동저장
-  const AUTOSAVE_DELAY     = 1500;   // ms
-
-  /* =========================================================
-     자동 저장 / 저장 상태 표시
-  ========================================================= */
-  function _setSaveStatus(text) {
-    const el = document.getElementById('save-status');
-    if (el) el.textContent = text || '';
-  }
-
-  function _scheduleAutosave() {
-    clearTimeout(_autosaveTimer);
-    if (!Workspace.getCurrentPageId()) return;
-    _autosaveTimer = setTimeout(async () => {
-      if (!Workspace.isDirty()) return;
-      if (!UI.isOnline() && !Storage.isDemo()) return; // 오프라인이면 수동 저장에 맡김
-      await _savePage({ silent: true, auto: true });
-    }, AUTOSAVE_DELAY);
-  }
 
   /* =========================================================
      앱 시작
@@ -42,16 +22,17 @@ const App = (() => {
     // 테마 초기화 (CSS 적용 전에)
     UI.initTheme();
 
-    // GIS 초기화 (실패해도 데모 모드는 가능하므로 앱을 막지 않음)
+    // GIS 초기화
     try {
       await Auth.init();
     } catch (e) {
-      console.warn('GIS 초기화 실패 — 실로그인은 불가하지만 데모는 가능합니다:', e);
+      console.error('GIS 초기화 실패:', e);
+      _showError('Google 인증 서비스를 불러오는 데 실패했습니다. 페이지를 새로고침 해주세요.');
+      return;
     }
 
-    // 로그인(또는 데모) 여부 확인
+    // 로그인 여부 확인
     if (Auth.isLoggedIn()) {
-      Storage.setMode(Auth.isDemo() ? 'demo' : 'drive');
       await _bootApp();
     } else {
       _showLoginScreen();
@@ -72,18 +53,9 @@ const App = (() => {
     if (btn && !btn.dataset.listenerBound) {
       btn.dataset.listenerBound = '1';
       btn.addEventListener('click', async () => {
-        // Client ID 미설정이면 구글의 400 오류 대신 설정 모달을 열어 안내
-        if (!Auth.isConfigured()) {
-          UI.toast('먼저 “구글 드라이브 연결 설정”에서 Client ID를 입력해 주세요.', 'info', 5000);
-          _openGoogleSetup();
-          return;
-        }
         btn.disabled = true;
-        // "로그인 상태 유지" 선택 반영 (토큰 저장 위치 결정)
-        Auth.setPersist(!!document.getElementById('chk-stay')?.checked);
         try {
           await Auth.login();
-          Storage.setMode('drive');
           await _bootApp();
         } catch (e) {
           console.error('로그인 실패:', e);
@@ -99,87 +71,6 @@ const App = (() => {
       // 로그아웃 후 재방문 시 버튼 다시 활성화
       btn.disabled = false;
     }
-
-    // 데모로 둘러보기 (OAuth 불필요)
-    const demoBtn = document.getElementById('btn-demo-login');
-    if (demoBtn && !demoBtn.dataset.listenerBound) {
-      demoBtn.dataset.listenerBound = '1';
-      demoBtn.addEventListener('click', async () => {
-        demoBtn.disabled = true;
-        Auth.enterDemo();
-        Storage.setMode('demo');
-        try {
-          await _bootApp();
-        } catch (e) {
-          console.error('데모 시작 실패:', e);
-          demoBtn.disabled = false;
-          UI.toast('데모를 시작하지 못했습니다.', 'error');
-        }
-      });
-    } else if (demoBtn) {
-      demoBtn.disabled = false;
-    }
-
-    // "로그인 상태 유지" 체크박스 — 저장된 설정 반영
-    const stay = document.getElementById('chk-stay');
-    if (stay) stay.checked = Auth.getPersist();
-
-    // 구글 드라이브 연결 설정 모달
-    const setupBtn = document.getElementById('btn-google-setup');
-    if (setupBtn && !setupBtn.dataset.listenerBound) {
-      setupBtn.dataset.listenerBound = '1';
-      setupBtn.addEventListener('click', _openGoogleSetup);
-    }
-  }
-
-  /* =========================================================
-     구글 연결 설정 (배포 후 코드 수정 없이 Client ID 입력)
-  ========================================================= */
-  function _openGoogleSetup() {
-    const overlay  = document.getElementById('modal-gsetup');
-    const input    = document.getElementById('gsetup-input');
-    const originEl = document.getElementById('gsetup-origin');
-    const btnSave  = document.getElementById('gsetup-save');
-    const btnCancel = document.getElementById('gsetup-cancel');
-    if (!overlay) return;
-
-    if (originEl) originEl.textContent = window.location.origin;
-    input.value = Auth.isConfigured() ? Auth.getClientId() : '';
-    overlay.classList.remove('hidden');
-    overlay.removeAttribute('aria-hidden');
-    input.focus();
-    input.select();
-
-    const close = () => {
-      overlay.classList.add('hidden');
-      overlay.setAttribute('aria-hidden', 'true');
-      btnSave.removeEventListener('click', onSave);
-      btnCancel.removeEventListener('click', close);
-      overlay.removeEventListener('click', onOverlay);
-      document.removeEventListener('keydown', onKey);
-    };
-    const onOverlay = (e) => { if (e.target === overlay) close(); };
-    const onKey = (e) => { if (e.key === 'Escape') close(); };
-    const onSave = () => {
-      const id = input.value.trim();
-      if (id && !id.includes('.apps.googleusercontent.com')) {
-        UI.toast('형식이 올바르지 않습니다. “…apps.googleusercontent.com” 형태여야 합니다.', 'warning', 5000);
-        return;
-      }
-      Auth.setClientId(id);
-      close();
-      if (Auth.isConfigured()) {
-        UI.toast('저장됐습니다. 잠시 후 새로고침 → “구글 계정으로 로그인”을 눌러주세요.', 'success', 4000);
-        setTimeout(() => location.reload(), 900);
-      } else {
-        UI.toast('연결 설정을 비웠습니다.', 'info');
-      }
-    };
-
-    btnSave.addEventListener('click', onSave);
-    btnCancel.addEventListener('click', close);
-    overlay.addEventListener('click', onOverlay);
-    document.addEventListener('keydown', onKey);
   }
 
   /* =========================================================
@@ -198,11 +89,6 @@ const App = (() => {
 
       // 앱 화면 전환
       _showApp();
-
-      // 데모 모드 배지 표시
-      document.getElementById('demo-badge')?.classList.toggle('hidden', !Auth.isDemo());
-      const logoutBtn = document.getElementById('btn-logout');
-      if (logoutBtn) logoutBtn.title = Auth.isDemo() ? '데모 종료' : '로그아웃';
 
       // UI 초기화 (한 번만)
       UI.initEmojiPicker();
@@ -330,11 +216,7 @@ const App = (() => {
       const mobileTitleEl = document.getElementById('mobile-page-title');
       if (mobileTitleEl) mobileTitleEl.textContent = title || '제목 없음';
       _updateSidebarTitle(Workspace.getCurrentPageId(), title);
-      _scheduleAutosave();
     });
-
-    // 에디터 내용 변경 → 자동 저장 예약
-    document.addEventListener('darakbang:editorChanged', _scheduleAutosave);
 
     // 엔터 키로 에디터 포커스 이동
     titleInput?.addEventListener('keydown', (e) => {
@@ -397,8 +279,7 @@ const App = (() => {
     if (pageId === Workspace.getCurrentPageId()) return;
 
     // 페이지 이동 시에는 경고 대신 자동 저장합니다. 저장 버튼 기능은 그대로 유지됩니다.
-    // (현재 열린 페이지가 있을 때만. 페이지가 없는데 dirty면 저장이 실패해 이동이 막히던 버그 방지)
-    if (Workspace.isDirty() && Workspace.getCurrentPageId()) {
+    if (Workspace.isDirty()) {
       const saved = await _savePage({ silent: true });
       if (!saved) return;
       Workspace.markClean();
@@ -531,7 +412,7 @@ const App = (() => {
 
     const toastEl = UI.toast('커버 이미지를 업로드 중입니다...', 'info', 30000);
     try {
-      const { fileId } = await Storage.uploadImage(file);
+      const { fileId } = await Drive.uploadImage(file);
       _currentCoverImageId = fileId;
       await _renderCover(fileId);
       document.getElementById('btn-add-cover')?.classList.add('hidden');
@@ -570,7 +451,7 @@ const App = (() => {
     ancestors.forEach((meta) => {
       const span = document.createElement('span');
       span.className = 'breadcrumb-item';
-      span.innerHTML = `<span class="breadcrumb-icon">${meta.icon || '📄'}</span><span class="breadcrumb-text">${UI.escapeHtml(meta.title || '제목 없음')}</span>`;
+      span.innerHTML = `<span class="breadcrumb-icon">${meta.icon || '📄'}</span>${UI.escapeHtml(meta.title || '제목 없음')}`;
       span.addEventListener('click', () => navigateToPage(meta.id));
       nav.appendChild(span);
 
@@ -585,7 +466,7 @@ const App = (() => {
       const span = document.createElement('span');
       span.className = 'breadcrumb-item breadcrumb-item-current';
       span.setAttribute('aria-current', 'page');
-      span.innerHTML = `<span class="breadcrumb-icon">${current.icon || '📄'}</span><span class="breadcrumb-text">${UI.escapeHtml(current.title || '제목 없음')}</span>`;
+      span.innerHTML = `<span class="breadcrumb-icon">${current.icon || '📄'}</span>${UI.escapeHtml(current.title || '제목 없음')}`;
       nav.appendChild(span);
     }
   }
@@ -607,7 +488,7 @@ const App = (() => {
     const pageId = Workspace.getCurrentPageId();
     if (!pageId) return false;
 
-    if (!UI.isOnline() && !Storage.isDemo()) {
+    if (!UI.isOnline()) {
       UI.toast('인터넷 연결이 필요합니다. 연결 후 저장해주세요.', 'warning', 5000);
       return false;
     }
@@ -628,8 +509,6 @@ const App = (() => {
 
       if (saved) {
         if (!options.silent) UI.toast('저장됐습니다.', 'success');
-        const t = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-        _setSaveStatus(`저장됨 · ${t}`);
         Sidebar.render();
         _renderBreadcrumb(pageId);
         const mobileTitleEl = document.getElementById('mobile-page-title');
@@ -651,7 +530,7 @@ const App = (() => {
      새 페이지 생성
   ========================================================= */
   async function createNewPage(parentId = null) {
-    if (!UI.isOnline() && !Storage.isDemo()) {
+    if (!UI.isOnline()) {
       UI.toast('새 페이지를 만들려면 인터넷 연결이 필요합니다.', 'warning');
       return null;
     }
@@ -685,6 +564,22 @@ const App = (() => {
   }
 
   /* =========================================================
+     현재 열린 에디터에 하위 페이지 링크 블록 삽입
+  ========================================================= */
+  async function insertChildLinkToCurrentEditor(childId) {
+    const editor = EditorManager.instance;
+    if (!editor) return;
+    try {
+      await editor.isReady;
+      const count = editor.blocks.getBlocksCount();
+      await editor.blocks.insert('pageLink', { pageId: childId }, {}, count, false);
+      Workspace.markDirty();
+    } catch (e) {
+      console.error('에디터 링크 블록 삽입 실패:', e);
+    }
+  }
+
+  /* =========================================================
      PUBLIC API
   ========================================================= */
   return {
@@ -692,6 +587,7 @@ const App = (() => {
     navigateToPage,
     createNewPage,
     showWelcome,
+    insertChildLinkToCurrentEditor,
   };
 })();
 
