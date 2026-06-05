@@ -340,6 +340,13 @@
   margin: var(--spacing-xs) 0;
 }
 
+/* 비활성 항목 (예: 맨 위 페이지의 '위로 이동') */
+.context-menu-item-disabled {
+  opacity: 0.38;
+  cursor: default;
+  pointer-events: none;
+}
+
 /* =========================================================
    MOBILE RESPONSIVE
 ========================================================= */
@@ -544,4 +551,14 @@ button:disabled {
   font-size: 0.78rem;
   color: var(--text-muted);
   transition: opacity var(--transition-fast);
+}
+
+/* 단어/글자 수 (요구사항 5) */
+.word-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+@media (max-width: 768px) {
+  .word-count { display: none; }
 }

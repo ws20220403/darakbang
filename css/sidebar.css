@@ -366,6 +366,30 @@
 }
 
 /* =========================================================
+   루트 페이지 드래그&드롭 (요구사항 3)
+========================================================= */
+.nav-item[data-depth="0"] > .nav-item-row[draggable="true"] {
+  cursor: grab;
+}
+.nav-item.nav-dragging {
+  opacity: 0.5;
+}
+/* 드롭 위치 표시선 */
+.nav-item.drop-before > .nav-item-row::before,
+.nav-item.drop-after  > .nav-item-row::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 2px;
+  background: var(--color-brand);
+  border-radius: 2px;
+  z-index: 5;
+}
+.nav-item.drop-before > .nav-item-row::before { top: -1px; }
+.nav-item.drop-after  > .nav-item-row::after  { bottom: -1px; }
+
+/* =========================================================
    SEARCH RESULTS
 ========================================================= */
 .search-results-list {
@@ -418,6 +442,9 @@
    SIDEBAR FOOTER
 ========================================================= */
 .sidebar-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
   padding: var(--spacing-sm) var(--spacing-md);
   border-top: 1px solid var(--border-color);
   flex-shrink: 0;
@@ -427,13 +454,16 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 8px var(--spacing-sm);
   border-radius: var(--border-radius-md);
   font-size: 0.875rem;
   color: var(--text-secondary);
   transition: all var(--transition-fast);
 }
+
+.btn-backup { flex-shrink: 0; }
 
 .btn-new-page:hover {
   background-color: var(--bg-hover);
