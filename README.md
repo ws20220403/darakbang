@@ -1,9 +1,18 @@
-# 다락방 v2 템플릿
+# 다락방 v3 템플릿
 
 다락방은 Google Drive를 개인 저장소로 사용하는 1인용 비공개 노트/문서 관리 앱입니다.
 이 폴더는 누구나 자신의 GitHub Pages + Google Cloud OAuth 설정으로 배포할 수 있도록 개인 정보를 제거한 템플릿입니다.
 
 > **빌드 불필요** — 순수 HTML/CSS/JS. 파일을 그대로 정적 호스팅하면 됩니다.
+
+## 🆕 v3에서 달라진 점 (자세한 내용: `다락방_v3_변경사항.md`)
+
+- **하위 페이지 ↔ 본문 링크 연동** — 좌측 탭에서 하위 페이지를 만들면 **부모 본문 맨 아래에 링크**가 자동 생성(중첩 포함). 삭제 시 죽은 링크 자동 정리.
+- **순서 동기화** — 본문에서 하위 문서 순서를 바꾸면 **좌측 탭 순서도 동일하게** 반영.
+- **페이지(루트) 순서 변경** — 좌측에서 **드래그&드롭** 또는 `⋯` 메뉴의 **위로/아래로**. (하위 페이지 제외, 루트끼리만)
+- **파일 업로드** — `파일` 블록으로 **PDF·Word·hwp·Excel·PPT·zip** 등 업로드/다운로드(드라이브 50MB).
+- **계산표** — `계산표` 블록에서 **=SUM, AVERAGE, MAX, MIN, COUNT, PRODUCT** 와 사칙연산 지원(엑셀식 셀 좌표).
+- **편의 기능** — 페이지 **복제**, **Markdown 내보내기**, **전체 백업(JSON)**, **단어/글자 수** 표시.
 
 ## ✨ v2에서 달라진 점
 
@@ -70,12 +79,13 @@ css/   reset, variables, layout, sidebar, editor, blocks, components, optimize
 js/
   ui.js          공통 UI(토스트/모달/이모지/컨텍스트메뉴/테마)
   auth.js        Google OAuth + 데모 모드
-  drive.js       Google Drive API (안전 삭제=휴지통)
+  drive.js       Google Drive API (안전 삭제=휴지통, 파일 업로드)
   local-store.js 데모/오프라인 localStorage 백엔드
   storage.js     저장소 추상화(Drive ↔ LocalStore 라우팅)
-  workspace.js   페이지/워크스페이스 상태 + 전체검색 인덱스
-  blocks.js      커스텀 블록(토글/콜아웃/이미지/하위문서/북마크/목차)
+  export.js      [v3] 블록 → Markdown / 평문 변환
+  workspace.js   페이지/워크스페이스 상태 + 전체검색 + 순서/링크 동기화
+  blocks.js      커스텀 블록(토글/콜아웃/이미지/파일/계산표/하위문서/북마크/목차)
   editor.js      Editor.js 통합 + 드래그&드롭
-  sidebar.js     사이드바
-  app.js         진입점/흐름/자동저장
+  sidebar.js     사이드바 + 루트 드래그&드롭
+  app.js         진입점/흐름/자동저장 + 복제/내보내기/백업
 ```
