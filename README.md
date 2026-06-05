@@ -1,81 +1,130 @@
-# 다락방 v2 템플릿
+# 다락방 (DARAKBANG)
 
-다락방은 Google Drive를 개인 저장소로 사용하는 1인용 비공개 노트/문서 관리 앱입니다.
-이 폴더는 누구나 자신의 GitHub Pages + Google Cloud OAuth 설정으로 배포할 수 있도록 개인 정보를 제거한 템플릿입니다.
+1인용 비공개 노트/문서 관리 웹앱.  
+구글 드라이브 기반, GitHub Pages 호스팅.
 
-> **빌드 불필요** — 순수 HTML/CSS/JS. 파일을 그대로 정적 호스팅하면 됩니다.
+---
 
-## ✨ v2에서 달라진 점
-
-- **데모 모드** — 로그인 화면의 “데모로 둘러보기”로 Google 로그인 없이 바로 체험(데이터는 브라우저 localStorage에만 저장).
-- **추가 메뉴 재설계** — `+`/`/` 블록 메뉴가 **그리드형**으로, 모든 블록을 스크롤 없이 한 화면에 표시.
-- **드래그 & 드롭** — 블록 왼쪽 손잡이(⠿)를 잡고 끌어 순서 변경(드롭 위치 표시선). `위로/아래로`도 유지.
-- **새 블록** — 목록(불릿·번호, 중첩) · 코드 · 표 · 웹 북마크 · 목차(TOC).
-- **자동 저장** — 입력이 멈추면 약 1.5초 뒤 자동 저장(저장 시각 표시). 수동 저장(Ctrl+S)도 유지.
-- **안전 삭제** — 페이지 삭제 시 영구 삭제가 아니라 **구글 드라이브 휴지통**으로 이동(복구 가능).
-- **전체 텍스트 검색** — 제목뿐 아니라 본문 내용까지 검색.
-- **이모지 검색** — “하트/별/책/동물…” 등 한글·영문 키워드로 검색.
-- **저장소 추상화** — Drive/데모 백엔드를 같은 인터페이스로 분리(`js/storage.js`).
-- **앱 내 구글 연결 설정** — 배포 후 코드 수정 없이 로그인 화면에서 Client ID 입력(localStorage).
-- **사용법 샘플 문서** — 데모에 “다락방 사용법” 페이지 기본 포함.
-- **텍스트 잘림 방지** — 고정 높이→최소 높이, 긴 문자열 줄바꿈, 한글 줄간격 보정(`css/optimize.css`).
-- 메모리 누수(Blob URL) 수정, 키보드 포커스 링 등 접근성·코드 정리.
-
-## 1. 로컬에서 바로 체험 (데모)
+## 로컬 테스트
 
 ```bash
-# 이 폴더에서
+# Python 3
 python -m http.server 8080
+
+# Node.js (npx)
+npx serve . -p 8080
 ```
-브라우저에서 `http://localhost:8080` → **“데모로 둘러보기”** 클릭. (OAuth 설정 불필요)
 
-## 2. 실제 사용 설정 (Google Drive 연동)
+브라우저에서 `http://localhost:8080` 열기
 
-본인의 Google OAuth Client ID가 필요합니다. 두 가지 방법 중 하나면 됩니다.
+---
 
-- **방법 A (권장·코드 수정 불필요)**: 배포 후 로그인 화면의 **“⚙️ 구글 드라이브 연결 설정”**을 눌러 Client ID를 붙여넣으면 됩니다(브라우저에 저장).
-- **방법 B (코드)**: `js/auth.js`의 `DEFAULT_CLIENT_ID` 값을 본인 ID로 교체.
+## ⚠️ 배포 전 필수 설정
+
+### 1. Google Cloud Console 설정
+
+1. [Google Cloud Console](https://console.cloud.google.com/) 접속
+2. 새 프로젝트 생성 (예: `darakbang-app`)
+3. **API 및 서비스 → 라이브러리** → **Google Drive API** 활성화
+4. **API 및 서비스 → OAuth 동의 화면**
+   - 사용자 유형: 외부
+   - 앱 이름: 다락방
+   - 게시 상태: **테스트**
+   - 테스트 사용자: 본인 이메일 추가
+5. **API 및 서비스 → 사용자 인증 정보**
+   - OAuth 2.0 클라이언트 ID 만들기
+   - 앱 유형: 웹 애플리케이션
+   - 승인된 JavaScript 출처:
+     - `http://localhost:8080` (로컬 테스트)
+     - `https://{your-username}.github.io` (배포)
+   - Client ID 복사
+
+### 2. Client ID 삽입
+
+`js/auth.js` 파일에서 아래 줄 수정:
 
 ```javascript
-const DEFAULT_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com';
+// Before
+const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com';
+
+// After
+const CLIENT_ID = '123456789-abcdefg.apps.googleusercontent.com';
 ```
 
-### Google Cloud Console 설정
-1. 새 프로젝트 생성 → **Google Drive API** 사용 설정.
-2. **OAuth 동의 화면** 구성.
-3. **OAuth 2.0 클라이언트 ID**(웹 애플리케이션) 생성.
-   - 승인된 JavaScript 출처:
-     - `http://localhost:8080`
-     - `https://{your-github-username}.github.io`
-4. 앱이 테스트 상태면 사용할 Google 이메일을 **테스트 사용자**로 추가.
+### 3. GitHub Pages 배포
 
-## 3. GitHub Pages 배포
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git remote add origin https://github.com/{username}/darakbang.git
+git push -u origin main
+```
 
-1. GitHub에 `darakbang` 저장소 생성.
-2. 이 폴더 안 파일들을 저장소 root에 업로드.
-3. Settings → Pages → Source: `Deploy from a branch`, Branch: `main` / `/(root)`.
+GitHub 저장소 Settings → Pages → Source: `main` branch / `/ (root)`
 
-배포 주소: `https://{your-github-username}.github.io/darakbang/`
+---
 
-## 4. 데이터 저장 위치
-
-로그인하면 사용자의 Google Drive에 `DARAKBANG` 폴더가 생성되고 그 안에 데이터가 저장됩니다.
-데모 모드 데이터는 브라우저 localStorage(`darakbang_demo_*`)에만 저장되며 드라이브로 전송되지 않습니다.
-
-## 5. 파일 구조
+## 파일 구조
 
 ```
-index.html
-css/   reset, variables, layout, sidebar, editor, blocks, components, optimize
-js/
-  ui.js          공통 UI(토스트/모달/이모지/컨텍스트메뉴/테마)
-  auth.js        Google OAuth + 데모 모드
-  drive.js       Google Drive API (안전 삭제=휴지통)
-  local-store.js 데모/오프라인 localStorage 백엔드
-  storage.js     저장소 추상화(Drive ↔ LocalStore 라우팅)
-  workspace.js   페이지/워크스페이스 상태 + 전체검색 인덱스
-  blocks.js      커스텀 블록(토글/콜아웃/이미지/하위문서/북마크/목차)
-  editor.js      Editor.js 통합 + 드래그&드롭
-  sidebar.js     사이드바
-  app.js         진입점/흐름/자동저장
+darakbang/
+├── index.html
+├── css/
+│   ├── reset.css
+│   ├── variables.css    # 디자인 토큰 (라이트/다크)
+│   ├── layout.css
+│   ├── sidebar.css
+│   ├── editor.css
+│   ├── blocks.css       # Toggle, Callout, Image, PageLink
+│   └── components.css   # 버튼, 모달, 토스트, 이모지 피커
+├── js/
+│   ├── ui.js            # 공통 UI 유틸리티
+│   ├── auth.js          # Google OAuth 2.0
+│   ├── drive.js         # Drive API v3 레이어
+│   ├── workspace.js     # 페이지 상태 관리
+│   ├── editor.js        # Editor.js + 커스텀 블록
+│   ├── sidebar.js       # 사이드바
+│   └── app.js           # 진입점
+└── assets/
+    └── favicon.svg
 ```
+
+---
+
+## 지원 블록
+
+| 블록 | 슬래시 명령어 |
+|------|--------------|
+| 텍스트 | `/텍스트` |
+| 제목 1/2/3 | `/제목 1` |
+| 체크리스트 | `/체크리스트` |
+| 인용구 | `/인용구` |
+| 구분선 | `/구분선` |
+| 토글 | `/토글` |
+| 콜아웃 | `/콜아웃` |
+| 이미지 | `/이미지` |
+| 하위 문서 | `/하위 문서` |
+
+---
+
+## 단축키
+
+| 단축키 | 기능 |
+|--------|------|
+| `Ctrl+S` | 현재 페이지 저장 |
+| `Ctrl+B` | 굵게 |
+| `Ctrl+I` | 기울임 |
+| `Ctrl+U` | 밑줄 |
+| `Ctrl+K` | 링크 |
+| `/` | 블록 타입 선택 |
+
+---
+
+## 데이터 저장 위치
+
+구글 드라이브 > `DARAKBANG/`
+- `workspace.json` — 페이지 목록 및 트리 구조
+- `pages/{id}.json` — 각 페이지 내용
+- `images/{id}.ext` — 이미지 파일
+- `settings.json` — 테마, 즐겨찾기 등
