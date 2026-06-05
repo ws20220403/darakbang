@@ -293,7 +293,7 @@
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-lg);
-  min-width: 210px;
+  min-width: 180px;
   padding: var(--spacing-xs) 0;
   z-index: 800;
   animation: slideUp 0.12s ease;

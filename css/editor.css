@@ -25,12 +25,18 @@
 /* Block wrapper */
 .ce-block {
   padding: 2px 0;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
 }
 
 .ce-block__content {
   max-width: 100%;
   margin: 0;
   position: relative;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
 }
 
 /* Toolbar */
@@ -94,11 +100,68 @@
   content: none !important;
 }
 
+.codex-editor .ce-block::before,
+.codex-editor .ce-block::after,
+.codex-editor .ce-block__content::before,
+.codex-editor .ce-block__content::after,
+.codex-editor .ce-block--focused::before,
+.codex-editor .ce-block--focused::after,
+.codex-editor .ce-block--selected::before,
+.codex-editor .ce-block--selected::after,
+.codex-editor .ce-block--drop-target::before,
+.codex-editor .ce-block--drop-target::after,
+.codex-editor .ce-block--drop-target .ce-block__content::before,
+.codex-editor .ce-block--drop-target .ce-block__content::after {
+  display: none !important;
+  content: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background: transparent !important;
+}
+
+.codex-editor .ce-block,
+.codex-editor .ce-block--focused,
+.codex-editor .ce-block--selected,
+.codex-editor .ce-block--drop-target,
+.codex-editor .ce-block__content {
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background-image: none !important;
+}
+
+.codex-editor-overlay__rectangle {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background: transparent !important;
+}
+
 .ce-toolbar__actions {
   left: -82px;
   right: auto;
   top: 3px !important;
   transform: none !important;
+  display: inline-flex !important;
+  width: auto !important;
+  max-width: max-content !important;
+  min-width: 0 !important;
+  height: auto !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+.ce-toolbar__actions::before,
+.ce-toolbar__actions::after {
+  display: none !important;
+  content: none !important;
 }
 
 .ce-toolbar__plus {
@@ -134,6 +197,18 @@
   color: var(--text-primary);
 }
 
+.ce-settings:not(.ce-settings--opened) {
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  overflow: hidden !important;
+}
+
 .ce-settings__button {
   color: var(--text-secondary);
 }
@@ -150,6 +225,17 @@
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
+}
+
+.ce-inline-toolbar:not(.ce-inline-toolbar--showed) {
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
 .ce-inline-toolbar__buttons {
@@ -199,6 +285,19 @@
   min-width: 270px;
 }
 
+.ce-popover:not(.ce-popover--opened) {
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  overflow: hidden !important;
+}
+
 .ce-popover__items,
 .ce-popover__items-wrapper {
   max-height: 300px !important;
@@ -236,6 +335,7 @@
   line-height: 1.75;
   color: var(--text-primary);
   padding: 2px 0;
+  min-height: calc(1.75em + 4px);
 }
 
 .ce-block [contenteditable="true"]:focus,
@@ -247,6 +347,20 @@
 
 .ce-paragraph[data-placeholder]::before {
   color: var(--color-placeholder);
+}
+
+.codex-editor [data-placeholder-active]:empty:focus::before,
+.codex-editor [data-placeholder-active][data-empty="true"]:focus::before,
+.codex-editor [data-placeholder]:empty:focus::before,
+.codex-editor [data-placeholder][data-empty="true"]:focus::before {
+  content: none !important;
+  display: none !important;
+}
+
+.codex-editor__redactor [contenteditable]:empty::after,
+.ce-paragraph:empty::after {
+  content: none !important;
+  display: none !important;
 }
 
 /* =========================================================
@@ -458,11 +572,11 @@ h3.ce-header {
 ========================================================= */
 @media (max-width: 768px) {
   .editorjs-container {
-    padding: 0 var(--spacing-lg) var(--spacing-2xl);
+    padding: 0 var(--spacing-md) var(--spacing-2xl) 52px;
   }
 
   .ce-toolbar__actions {
-    left: -48px;
+    left: -42px;
     right: auto;
     top: 3px !important;
     transform: none !important;
