@@ -466,3 +466,82 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* =========================================================
+   접근성 — 키보드 포커스 링 (v2)
+========================================================= */
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: var(--border-radius-sm);
+}
+.ce-block [contenteditable="true"]:focus-visible,
+.page-title-input:focus-visible { outline: none; }
+
+/* =========================================================
+   로그인 — 데모 버튼 / 구분선 (v2)
+========================================================= */
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-md) 0;
+  color: #aaa;
+  font-size: 0.78rem;
+}
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.12);
+}
+[data-theme="dark"] .login-divider::before,
+[data-theme="dark"] .login-divider::after { background: rgba(255, 255, 255, 0.14); }
+
+.btn-demo-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: 13px var(--spacing-lg);
+  background: var(--color-brand-dim);
+  color: var(--color-brand);
+  border: 1.5px solid var(--color-brand);
+  border-radius: var(--border-radius-lg);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.btn-demo-login:hover {
+  background: var(--color-brand);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(108, 99, 255, 0.35);
+}
+.btn-demo-login__icon { font-size: 1rem; }
+.btn-demo-login__sub { font-weight: 400; opacity: 0.8; font-size: 0.85em; }
+
+/* =========================================================
+   DEMO 배지 / 저장 상태 (v2)
+========================================================= */
+.demo-badge {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--color-brand);
+  background: var(--color-brand-dim);
+  border: 1px solid var(--color-brand);
+  border-radius: var(--border-radius-full);
+  padding: 1px 6px;
+  margin-left: 2px;
+  flex-shrink: 0;
+}
+
+.save-status {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  transition: opacity var(--transition-fast);
+}
