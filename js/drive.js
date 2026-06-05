@@ -194,7 +194,12 @@ const Drive = (() => {
   }
 
   async function deleteFile(fileId) {
-    await _fetch(`${BASE_URL}/files/${fileId}`, { method: 'DELETE' });
+    // [안전] 영구 삭제 대신 구글 드라이브 휴지통으로 이동 → 실수해도 복구 가능
+    await _fetch(`${BASE_URL}/files/${fileId}?fields=id`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trashed: true }),
+    });
   }
 
   /* =========================================================

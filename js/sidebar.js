@@ -240,13 +240,13 @@ const Sidebar = (() => {
       favorited: isFav,
 
       onRename: async () => {
-        const newTitle = prompt('새 페이지 이름:', meta.title || '제목 없음');
-        if (newTitle !== null && newTitle.trim() !== '') {
-          await Workspace.renamePage(meta.id, newTitle.trim());
+        const newTitle = await UI.prompt('이름 바꾸기', meta.title || '제목 없음', '페이지 이름');
+        if (newTitle) {
+          await Workspace.renamePage(meta.id, newTitle);
           // 현재 페이지라면 제목도 업데이트
           if (meta.id === Workspace.getCurrentPageId()) {
             const titleInput = document.getElementById('page-title-input');
-            if (titleInput) titleInput.textContent = newTitle.trim();
+            if (titleInput) titleInput.textContent = newTitle;
           }
           render();
         }

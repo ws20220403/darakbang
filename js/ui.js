@@ -123,14 +123,18 @@ const UI = (() => {
   /* =========================================================
      MODAL — 링크 입력
   ========================================================= */
-  function promptLink(defaultUrl = '') {
+  // 범용 입력 모달 (브라우저 기본 prompt() 대체)
+  function prompt(title, defaultValue = '', placeholder = '') {
     return new Promise((resolve) => {
-      const overlay = document.getElementById('modal-link');
-      const input   = document.getElementById('modal-link-input');
-      const btnCancel  = document.getElementById('modal-link-cancel');
-      const btnConfirm = document.getElementById('modal-link-confirm');
+      const overlay    = document.getElementById('modal-prompt');
+      const titleEl    = document.getElementById('modal-prompt-title');
+      const input      = document.getElementById('modal-prompt-input');
+      const btnCancel  = document.getElementById('modal-prompt-cancel');
+      const btnConfirm = document.getElementById('modal-prompt-confirm');
 
-      input.value = defaultUrl;
+      titleEl.textContent = title || '입력';
+      input.value = defaultValue || '';
+      input.placeholder = placeholder || '';
       overlay.classList.remove('hidden');
       overlay.removeAttribute('aria-hidden');
       input.focus();
@@ -161,6 +165,10 @@ const UI = (() => {
     });
   }
 
+  function promptLink(defaultUrl = '') {
+    return prompt('링크 삽입', defaultUrl, 'https://...');
+  }
+
   /* =========================================================
      EMOJI PICKER
   ========================================================= */
@@ -187,6 +195,31 @@ const UI = (() => {
     '📡','🔭','🌍','🌎','🌏','🗺️','🧭','⛰️','🏔️','🌋',
     '🦋','🐝','🐛','🦗','🕷️','🦂','🐢','🦎','🐍','🦕',
   ];
+
+  // 이모지 검색 키워드 (행=10개 단위, EMOJIS 배열 카테고리와 일치)
+  const EMOJI_KEYWORDS = [
+    '문서 파일 폴더 차트 그래프 document file folder chart',     // 📄📃📋📁📂🗂️📑📊📈📉
+    '메모 쓰기 펜 핀 달력 일정 note write pen pin calendar',      // 📝✏️🖊️🖋️🖌️📌📍🗓️📅📆
+    '집 건물 home house building 빌딩',                            // 🏠🏡🏢🏣...
+    '별 반짝 불 아이디어 목표 예술 star fire idea art sparkle',   // ⭐🌟💫✨🔥💡🎯🎪🎨🎭
+    '컴퓨터 기기 폰 노트북 device computer phone laptop',         // 💻🖥️...📱📲
+    '책 공부 독서 book study read 노트',                          // 📚📖📗...
+    '열쇠 자물쇠 보안 링크 클립 key lock link security',          // 🔑🗝️🔒🔓🔏🔐🔗📎🖇️📏
+    '말풍선 대화 알림 종 채팅 speech chat bell talk',             // 💬💭🗨️🗯️📢📣🔔🔕🔇🔊
+    '날씨 해 달 비 무지개 weather sun moon rain rainbow',         // 🌈☀️🌙⛅...
+    '꽃 식물 자연 flower plant nature 잎',                        // 🌺🌸🌼🌻🌹🌷💐🍀🌿🌱
+    '동물 강아지 고양이 곰 토끼 animal dog cat bear',             // 🐶🐱🐭🐹🐰🦊🐻🐼🐨🐯
+    '하트 사랑 마음 heart love',                                  // ❤️🧡💛💚💙💜🖤🤍🤎💔
+    '얼굴 웃음 표정 emoji face smile happy 감정',                 // 😀😃😄😁😆😅😂🤣😊😇
+    '과일 음식 사과 fruit food apple 먹을것',                     // 🍎🍊🍋🍇🍓🍑🍒🍌🍉🍍
+    '음악 노래 악기 music song guitar 기타',                      // 🎵🎶🎸🥁🎹🎺🎻🎤🎧🎼
+    '이동 차 비행기 로켓 배 transport car plane rocket',          // 🚀✈️🚂🚗🚕🛸🛶⛵🚢🚁
+    '상 트로피 보석 왕관 우승 award trophy crown win medal',      // 💎👑🏆🥇🥈🥉🎖️🏅🎗️🎀
+    '과학 실험 연구 의학 science lab research medicine',          // 🔬🔭⚗️🧬🧪🧫🧲💊💉🩺
+    '지구 세계 지도 우주 earth world map space globe',            // 📡🔭🌍🌎🌏🗺️🧭⛰️🏔️🌋
+    '곤충 벌레 나비 bug insect butterfly',                        // 🦋🐝🐛🦗🕷️🦂🐢🦎🐍🦕
+  ];
+  const emojiKeywords = (i) => EMOJI_KEYWORDS[Math.floor(i / 10)] || '';
 
   let emojiCallback = null;
   let emojiPickerOpen = false;
@@ -218,11 +251,11 @@ const UI = (() => {
       const q = searchInput.value.trim().toLowerCase();
       if (!q) {
         renderEmojis(EMOJIS);
-      } else {
-        // 간단한 유니코드 필터 (실제 이름은 없으므로 인덱스로 필터)
-        const filtered = EMOJIS.filter((_, i) => String(i).includes(q) || EMOJIS[i].includes(q));
-        renderEmojis(filtered.length ? filtered : EMOJIS.slice(0, 40));
+        return;
       }
+      // 카테고리 키워드(한/영) 또는 이모지 자체로 검색
+      const filtered = EMOJIS.filter((e, i) => e === q || emojiKeywords(i).toLowerCase().includes(q));
+      renderEmojis(filtered);
     });
 
     // 외부 클릭 닫기
@@ -483,6 +516,7 @@ const UI = (() => {
     toast,
     confirmDelete,
     confirmUnsaved,
+    prompt,
     promptLink,
     openEmojiPicker,
     closeEmojiPicker,
