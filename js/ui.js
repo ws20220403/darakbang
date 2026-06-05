@@ -281,13 +281,10 @@ const UI = (() => {
   function openContextMenu(x, y, options) {
     const menu = document.getElementById('context-menu');
 
+    // options: { rename, favorite, favorited, newSubpage, delete }
     const ctxRename    = document.getElementById('ctx-rename');
     const ctxFavorite  = document.getElementById('ctx-favorite');
     const ctxNewSub    = document.getElementById('ctx-new-subpage');
-    const ctxMoveUp    = document.getElementById('ctx-move-up');
-    const ctxMoveDown  = document.getElementById('ctx-move-down');
-    const ctxPromote   = document.getElementById('ctx-promote');
-    const ctxDemote    = document.getElementById('ctx-demote');
     const ctxDelete    = document.getElementById('ctx-delete');
 
     // 즐겨찾기 텍스트 업데이트
@@ -296,19 +293,13 @@ const UI = (() => {
       ${options.favorited ? '즐겨찾기 제거' : '즐겨찾기에 추가'}
     `;
 
-    // 이동 관련 항목 표시/숨김
-    ctxMoveUp?.classList.toggle('hidden',  !options.canMoveUp);
-    ctxMoveDown?.classList.toggle('hidden', !options.canMoveDown);
-    ctxPromote?.classList.toggle('hidden',  !options.canPromote);
-    ctxDemote?.classList.toggle('hidden',   !options.canDemote);
-
     // 위치
     let left = x;
     let top  = y;
-    const menuW = 210;
-    const menuH = menu.offsetHeight || 240;
-    if (left + menuW > window.innerWidth)  left = x - menuW;
-    if (top  + menuH > window.innerHeight) top  = y - menuH;
+    const menuW = 180;
+    const menuH = 160;
+    if (left + menuW > window.innerWidth) left = x - menuW;
+    if (top  + menuH > window.innerHeight) top = y - menuH;
 
     menu.style.left = `${Math.max(4, left)}px`;
     menu.style.top  = `${Math.max(4, top)}px`;
@@ -321,20 +312,12 @@ const UI = (() => {
       ctxRename.removeEventListener('click', onRename);
       ctxFavorite.removeEventListener('click', onFavorite);
       ctxNewSub.removeEventListener('click', onNewSub);
-      ctxMoveUp?.removeEventListener('click', onMoveUp);
-      ctxMoveDown?.removeEventListener('click', onMoveDown);
-      ctxPromote?.removeEventListener('click', onPromote);
-      ctxDemote?.removeEventListener('click', onDemote);
       ctxDelete.removeEventListener('click', onDelete);
     };
 
     const onRename   = () => { close(); options.onRename?.(); };
     const onFavorite = () => { close(); options.onFavorite?.(); };
     const onNewSub   = () => { close(); options.onNewSubpage?.(); };
-    const onMoveUp   = () => { close(); options.onMoveUp?.(); };
-    const onMoveDown = () => { close(); options.onMoveDown?.(); };
-    const onPromote  = () => { close(); options.onPromote?.(); };
-    const onDemote   = () => { close(); options.onDemote?.(); };
     const onDelete   = () => { close(); options.onDelete?.(); };
     const onDocClick = (e) => { if (!menu.contains(e.target)) close(); };
     const onKeydown  = (e) => { if (e.key === 'Escape') close(); };
@@ -342,10 +325,6 @@ const UI = (() => {
     ctxRename.addEventListener('click', onRename);
     ctxFavorite.addEventListener('click', onFavorite);
     ctxNewSub.addEventListener('click', onNewSub);
-    ctxMoveUp?.addEventListener('click', onMoveUp);
-    ctxMoveDown?.addEventListener('click', onMoveDown);
-    ctxPromote?.addEventListener('click', onPromote);
-    ctxDemote?.addEventListener('click', onDemote);
     ctxDelete.addEventListener('click', onDelete);
     document.addEventListener('click', onDocClick);
     document.addEventListener('keydown', onKeydown);

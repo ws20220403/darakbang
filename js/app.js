@@ -564,22 +564,6 @@ const App = (() => {
   }
 
   /* =========================================================
-     현재 열린 에디터에 하위 페이지 링크 블록 삽입
-  ========================================================= */
-  async function insertChildLinkToCurrentEditor(childId) {
-    const editor = EditorManager.instance;
-    if (!editor) return;
-    try {
-      await editor.isReady;
-      const count = editor.blocks.getBlocksCount();
-      await editor.blocks.insert('pageLink', { pageId: childId }, {}, count, false);
-      Workspace.markDirty();
-    } catch (e) {
-      console.error('에디터 링크 블록 삽입 실패:', e);
-    }
-  }
-
-  /* =========================================================
      PUBLIC API
   ========================================================= */
   return {
@@ -587,7 +571,6 @@ const App = (() => {
     navigateToPage,
     createNewPage,
     showWelcome,
-    insertChildLinkToCurrentEditor,
   };
 })();
 
