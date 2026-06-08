@@ -33,7 +33,7 @@ const LocalStore = (() => {
   }
 
   /* ---------- 초기화 + 샘플 시드 ---------- */
-  const SEED_VERSION = '4';   // 샘플(사용법 등) 내용이 바뀌면 올림 → 데모 데이터 갱신
+  const SEED_VERSION = '5';   // 샘플(사용법 등) 내용이 바뀌면 올림 → 데모 데이터 갱신
   async function initFolderStructure() {
     // 데모는 체험용 샘플 데이터이므로, 버전이 바뀌면 새 샘플로 갱신한다.
     if (localStorage.getItem(K.seeded) !== SEED_VERSION) {
@@ -131,13 +131,13 @@ const LocalStore = (() => {
           { type: 'callout', data: { text: '왼쪽 블록 앞의 <b>⠿ 손잡이</b>를 잡고 끌면 순서를 바꿀 수 있어요. <b>+</b> 버튼이나 <b>/</b> 를 누르면 추가할 블록을 한 화면에서 고를 수 있습니다.', icon: '✨', color: 'indigo' } },
           { type: 'header', data: { text: 'v3에서 새로 들어온 것', level: 2 } },
           { type: 'list', data: { style: 'unordered', items: [
-            { content: '<b>계산표</b> — 셀에 =SUM, =AVERAGE 같은 함수 (아래 예시)', items: [] },
+            { content: '<b>표에 함수</b> — 셀에 =SUM, =AVERAGE 같은 함수 (아래 예시)', items: [] },
             { content: '<b>파일</b> 첨부 — PDF·Word·Excel·hwp 등', items: [] },
-            { content: '하위 페이지를 만들면 본문에 링크 자동 생성 + 순서 동기화', items: [] },
+            { content: '하위 페이지를 만들면 본문에 링크 자동 생성 + 순서 동기화(양방향)', items: [] },
             { content: '페이지 드래그&드롭 / ⋯ 위로·아래로 / 복제 / 내보내기 / 백업', items: [] },
           ] } },
-          { type: 'paragraph', data: { text: '아래는 <b>계산표</b> 예시예요. 합계 칸을 눌러보면 <code class="inline-code">=SUM(...)</code> 수식이 보입니다.' } },
-          { type: 'spreadsheet', data: { cells: [
+          { type: 'paragraph', data: { text: '아래는 함수가 들어간 <b>표</b> 예시예요. 합계 칸을 눌러보면 <code class="inline-code">=SUM(...)</code> 수식이 보이고, 수식을 입력할 때 열(A·B·C)·행(1·2·3) 좌표가 살짝 나타납니다.' } },
+          { type: 'table', data: { withHeadings: true, content: [
             ['항목', '1월', '2월', '합계'],
             ['매출', '100', '120', '=SUM(B2:C2)'],
             ['비용', '40', '55', '=SUM(B3:C3)'],

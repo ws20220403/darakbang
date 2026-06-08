@@ -272,7 +272,7 @@ const Workspace = (() => {
     return true;
   }
 
-  /* 저장 시: 본문의 하위문서(pageLink) 순서를 부모 children 순서에 반영 */
+  /* 저장 시: 본문의 하위문서(pageLink) 순서를 부모 children 순서에 반영 (본문 → 사이드바) */
   function _syncChildrenOrderFromBody(meta, editorData) {
     if (!meta || !Array.isArray(meta.children) || meta.children.length < 2) return;
     if (!editorData || !Array.isArray(editorData.blocks)) return;
@@ -289,6 +289,44 @@ const Workspace = (() => {
     const notInBody = meta.children.filter(id => !bodyOrder.includes(id));
     meta.children = [...inBody, ...notInBody];
   }
+
+  /* 즉시 동기화(저장 없이, in-memory): 본문 순서 → children. 바뀌면 true.
+     자동저장(1.5s)을 기다리지 않고 사이드바를 곧바로 갱신하기 위함(체감 속도 ↑). */
+  function syncChildrenOrderLive(pageId, editorData) {
+    const meta = getPageMeta(pageId);
+    if (!meta || !Array.isArray(meta.children) || meta.children.length < 2) return false;
+    const before = meta.children.join('|');
+    _syncChildrenOrderFromBody(meta, editorData);
+    return meta.children.join('|') !== before;
+  }
+
+  /* 하위 페이지(형제) 순서 재배치 (사이드바 → 본문). 부모가 '열려있지 않을' 때.
+     본문의 pageLink 슬롯은 그대로 두고, 슬롯에 들어갈 pageId 만 newOrder 순으로 재배치
+     (자식 수 ≠ 링크 수, 죽은 링크가 있어도 안전). */
+  async function reorderChildrenStored(parentId, newOrder) {
+    const meta = getPageMeta(parentId);
+    if (!meta) return false;
+    meta.children = newOrder.slice();
+
+    let data = _pageCache[parentId] || await Storage.readPage(parentId);
+    if (data && data.editorData && Array.isArray(data.editorData.blocks)) {
+      const blocks = data.editorData.blocks;
+      const slots = [];
+      blocks.forEach((b, i) => { if (b && b.type === 'pageLink' && b.data && b.data.pageId) slots.push(i); });
+      const pageIds = slots.map(i => blocks[i].data.pageId);
+      const rank = (id) => { const k = newOrder.indexOf(id); return k === -1 ? Number.MAX_SAFE_INTEGER : k; };
+      const desired = pageIds.slice().sort((a, b) => rank(a) - rank(b));
+      slots.forEach((slotIdx, k) => { blocks[slotIdx].data.pageId = desired[k]; });
+      data.updatedAt = new Date().toISOString();
+      await Storage.writePage(parentId, data);
+      _pageCache[parentId] = data;
+    }
+    await _saveWorkspace();
+    return true;
+  }
+
+  /* children(형제) id 배열 — 표시 순서대로 */
+  function getChildrenIds(parentId) { return getChildren(parentId).map(p => p.id); }
 
   /* =========================================================
      루트 페이지 순서 변경 (요구사항 3 — 하위페이지 제외, 루트끼리만)
@@ -658,6 +696,9 @@ const Workspace = (() => {
     removeChildLink,
     moveRootPage,
     reorderRootPage,
+    reorderChildrenStored,
+    syncChildrenOrderLive,
+    getChildrenIds,
     getRootIndex,
     getRootCount,
     isFavorite,

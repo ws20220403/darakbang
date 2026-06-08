@@ -672,79 +672,64 @@ class AttachmentTool {
 }
 
 /* =========================================================
-   SPREADSHEET (계산표 — sum/average/max/min 등 함수) — 신규 v3
-   · 셀에 =SUM(A1:A3), =AVERAGE(B1:B4), =A1+B2*2 처럼 입력하면 계산
-   · 기존 '표' 블록은 그대로 두고, 함수가 필요할 때 쓰는 별도 블록
+   TABLE (표 + 계산표 통합) — v3
+   · 기본 디자인은 기존 '표'를 따르고, 셀에 =SUM(A1:A3) 같은 함수를 쓰면 계산.
+   · 수식을 입력하려고 하면 열(A·B·C) / 행(1·2·3) 좌표가 옅게 나타남(표 크기 불변, 오버레이).
+   · 데이터: { withHeadings, content:[[..]] } (기존 표와 호환). 옛 계산표 { cells } 도 읽음.
+   · 수식 엔진은 formula.js(Formula) 공용 사용.
 ========================================================= */
-class SpreadsheetTool {
+class TableTool {
   static get toolbox() {
     return {
-      title: '계산표',
+      title: '표',
       icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>',
     };
   }
 
   constructor({ data, readOnly }) {
     this.readOnly = readOnly;
-    this._cells = this._normalize(data && data.cells);
-    this._wrapper = null;
+    const d = data || {};
+    // 기존 표(content) · 옛 계산표(cells) 모두 수용
+    const src = Array.isArray(d.content) ? d.content : (Array.isArray(d.cells) ? d.cells : null);
+    this._grid = this._normalize(src);
+    this._withHeadings = d.withHeadings !== undefined ? !!d.withHeadings : false;
+    this._block = null;
   }
 
-  _normalize(cells) {
-    let c = Array.isArray(cells) && cells.length
-      ? cells.map(r => Array.isArray(r) ? r.slice() : [])
+  _normalize(src) {
+    let c = Array.isArray(src) && src.length
+      ? src.map(r => Array.isArray(r) ? r.slice() : [])
       : [['', '', ''], ['', '', ''], ['', '', '']];
     const cols = Math.max(1, ...c.map(r => r.length));
     c = c.map(r => { const row = r.map(v => (v == null ? '' : String(v))); while (row.length < cols) row.push(''); return row; });
     return c;
   }
 
-  get _rows() { return this._cells.length; }
-  get _cols() { return this._cells[0] ? this._cells[0].length : 0; }
-
-  /* ---- 좌표 유틸 ---- */
-  static colName(i) { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; }
-  static colIndex(letters) { let n = 0; for (const ch of letters.toUpperCase()) n = n * 26 + (ch.charCodeAt(0) - 64); return n - 1; }
+  get _rows() { return this._grid.length; }
+  get _cols() { return this._grid[0] ? this._grid[0].length : 0; }
 
   render() {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'spreadsheet-block';
-    this._wrapper = wrapper;
+    const block = document.createElement('div');
+    block.className = 'table-block';
+    this._block = block;
     this._renderAll();
-    return wrapper;
+    return block;
   }
 
   _renderAll() {
-    const w = this._wrapper;
+    const w = this._block;
     if (!w) return;
     w.innerHTML = '';
+    w.classList.toggle('with-headings', this._withHeadings);
 
     const scroll = document.createElement('div');
-    scroll.className = 'spreadsheet-block__scroll';
+    scroll.className = 'table-block__scroll';
+
     const table = document.createElement('table');
-    table.className = 'spreadsheet-block__table';
-
-    // 헤더 (열 이름 A·B·C…)
-    const thead = document.createElement('thead');
-    const htr = document.createElement('tr');
-    htr.appendChild(this._cornerCell());
-    for (let c = 0; c < this._cols; c++) {
-      const th = document.createElement('th');
-      th.className = 'spreadsheet-block__colhead';
-      th.textContent = SpreadsheetTool.colName(c);
-      htr.appendChild(th);
-    }
-    thead.appendChild(htr);
-    table.appendChild(thead);
-
-    // 본문
+    table.className = 'table-block__table';
     const tbody = document.createElement('tbody');
     for (let r = 0; r < this._rows; r++) {
       const tr = document.createElement('tr');
-      const rh = document.createElement('th');
-      rh.className = 'spreadsheet-block__rowhead';
-      rh.textContent = String(r + 1);
-      tr.appendChild(rh);
       for (let c = 0; c < this._cols; c++) tr.appendChild(this._cellTd(r, c));
       tbody.appendChild(tr);
     }
@@ -752,233 +737,141 @@ class SpreadsheetTool {
     scroll.appendChild(table);
     w.appendChild(scroll);
 
+    // 좌표 라벨 레이어(수식 입력 시에만 표시) — 오버레이라 표 크기에 영향 없음
+    this._colLabels = document.createElement('div');
+    this._colLabels.className = 'table-block__labels table-block__labels--col';
+    this._rowLabels = document.createElement('div');
+    this._rowLabels.className = 'table-block__labels table-block__labels--row';
+    for (let c = 0; c < this._cols; c++) {
+      const s = document.createElement('span'); s.textContent = Formula.colName(c); this._colLabels.appendChild(s);
+    }
+    for (let r = 0; r < this._rows; r++) {
+      const s = document.createElement('span'); s.textContent = String(r + 1); this._rowLabels.appendChild(s);
+    }
+    w.appendChild(this._colLabels);
+    w.appendChild(this._rowLabels);
+
     if (!this.readOnly) w.appendChild(this._toolbar());
     this._recalcAll();
   }
 
-  _cornerCell() {
-    const th = document.createElement('th');
-    th.className = 'spreadsheet-block__corner';
-    th.textContent = 'ƒ';
-    th.title = '계산표: 셀에 =SUM(A1:A3), =AVERAGE(...), =A1+B2 처럼 입력하세요';
-    return th;
-  }
-
   _cellTd(r, c) {
     const td = document.createElement('td');
-    td.className = 'spreadsheet-block__cell';
+    td.className = 'table-block__cell';
+    if (this._withHeadings && r === 0) td.classList.add('is-head');
     td.dataset.r = r; td.dataset.c = c;
     td.contentEditable = this.readOnly ? 'false' : 'true';
     td.spellcheck = false;
-    td.textContent = this._display(r, c);
+    td.textContent = Formula.displayValue(this._grid, r, c);
     if (this.readOnly) return td;
 
     td.addEventListener('focus', () => {
-      const raw = this._cells[r][c] || '';
+      const raw = this._grid[r][c] || '';
       if (td.textContent !== raw) td.textContent = raw;
-      td.classList.toggle('is-formula', raw.startsWith('='));
+      this._setFormulaMode(Formula.isFormula(raw));
     });
     td.addEventListener('input', () => {
-      this._cells[r][c] = td.textContent;
-      this._recalcAll(td);            // 입력 중인 칸은 건드리지 않음
+      this._grid[r][c] = td.textContent;
+      this._setFormulaMode(Formula.isFormula(td.textContent));
+      this._recalcAll(td);
       Workspace.markDirty();
     });
     td.addEventListener('blur', () => {
-      this._cells[r][c] = td.textContent.trim();
-      td.classList.remove('is-formula');
-      td.textContent = this._display(r, c);
+      this._grid[r][c] = td.textContent.trim();
+      this._setFormulaMode(false);
+      td.textContent = Formula.displayValue(this._grid, r, c);
       this._recalcAll();
     });
-    td.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); td.blur(); } });
+    td.addEventListener('keydown', (e) => this._onCellKey(e, r, c));
     return td;
+  }
+
+  _onCellKey(e, r, c) {
+    const move = (nr, nc) => {
+      const t = this._block.querySelector(`.table-block__cell[data-r="${nr}"][data-c="${nc}"]`);
+      if (t) { e.preventDefault(); t.focus();
+        const sel = window.getSelection(); const range = document.createRange();
+        range.selectNodeContents(t); range.collapse(false); sel.removeAllRanges(); sel.addRange(range);
+      }
+    };
+    if (e.key === 'Enter') { e.preventDefault(); if (r + 1 < this._rows) move(r + 1, c); else e.target.blur(); }
+    else if (e.key === 'Tab') {
+      if (e.shiftKey) { if (c - 1 >= 0) move(r, c - 1); else if (r - 1 >= 0) move(r - 1, this._cols - 1); }
+      else { if (c + 1 < this._cols) move(r, c + 1); else if (r + 1 < this._rows) move(r + 1, 0); }
+    }
+  }
+
+  _setFormulaMode(on) {
+    if (!this._block) return;
+    this._block.classList.toggle('formula-editing', on);
+    if (on) this._positionLabels();
+  }
+
+  // 좌표 라벨을 각 열 중앙 위 / 각 행 중앙 왼쪽에 배치 (오버레이)
+  _positionLabels() {
+    if (!this._block || !this._colLabels) return;
+    const base = this._block.getBoundingClientRect();
+    const colSpans = this._colLabels.children;
+    const rowSpans = this._rowLabels.children;
+    for (let c = 0; c < this._cols; c++) {
+      const cell = this._block.querySelector(`.table-block__cell[data-r="0"][data-c="${c}"]`);
+      if (cell && colSpans[c]) {
+        const rc = cell.getBoundingClientRect();
+        colSpans[c].style.left = (rc.left - base.left + rc.width / 2) + 'px';
+      }
+    }
+    for (let r = 0; r < this._rows; r++) {
+      const cell = this._block.querySelector(`.table-block__cell[data-r="${r}"][data-c="0"]`);
+      if (cell && rowSpans[r]) {
+        const rc = cell.getBoundingClientRect();
+        rowSpans[r].style.top = (rc.top - base.top + rc.height / 2) + 'px';
+      }
+    }
   }
 
   _toolbar() {
     const bar = document.createElement('div');
-    bar.className = 'spreadsheet-block__toolbar';
+    bar.className = 'table-block__toolbar';
     const mk = (label, title, fn) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'spreadsheet-block__btn';
-      b.textContent = label;
-      b.title = title;
+      b.className = 'table-block__btn';
+      b.textContent = label; b.title = title;
       b.addEventListener('click', (e) => { e.stopPropagation(); fn(); Workspace.markDirty(); this._renderAll(); });
       return b;
     };
-    bar.appendChild(mk('+행', '행 추가', () => this._cells.push(Array(this._cols).fill(''))));
-    bar.appendChild(mk('−행', '마지막 행 삭제', () => { if (this._rows > 1) this._cells.pop(); }));
-    bar.appendChild(mk('+열', '열 추가', () => this._cells.forEach(row => row.push(''))));
-    bar.appendChild(mk('−열', '마지막 열 삭제', () => { if (this._cols > 1) this._cells.forEach(row => row.pop()); }));
+    bar.appendChild(mk('+행', '행 추가', () => this._grid.push(Array(this._cols).fill(''))));
+    bar.appendChild(mk('−행', '마지막 행 삭제', () => { if (this._rows > 1) this._grid.pop(); }));
+    bar.appendChild(mk('+열', '열 추가', () => this._grid.forEach(row => row.push(''))));
+    bar.appendChild(mk('−열', '마지막 열 삭제', () => { if (this._cols > 1) this._grid.forEach(row => row.pop()); }));
+    bar.appendChild(mk(this._withHeadings ? '헤더 ✓' : '헤더', '첫 행을 머리글로', () => { this._withHeadings = !this._withHeadings; }));
     const hint = document.createElement('span');
-    hint.className = 'spreadsheet-block__hint';
-    hint.textContent = '=SUM, AVERAGE, MAX, MIN, COUNT, PRODUCT, +−×÷';
+    hint.className = 'table-block__hint';
+    hint.textContent = '=SUM, AVERAGE, MAX, MIN, COUNT …';
     bar.appendChild(hint);
     return bar;
   }
 
-  /* ---- 표시값 ---- */
-  _display(r, c) {
-    const raw = (this._cells[r] && this._cells[r][c]) || '';
-    if (typeof raw === 'string' && raw.trim().startsWith('=')) {
-      try { return this._fmt(this._evalFormula(raw.trim().slice(1), new Set([r + ',' + c]))); }
-      catch (e) { return '#ERR'; }
-    }
-    return raw;
-  }
-
-  _fmt(v) {
-    if (v == null || (typeof v === 'number' && !isFinite(v))) return '#ERR';
-    if (typeof v === 'number') return String(Math.round(v * 1e10) / 1e10);
-    return String(v);
-  }
-
   _recalcAll(skipTd) {
-    const w = this._wrapper;
+    const w = this._block;
     if (!w) return;
-    w.querySelectorAll('.spreadsheet-block__cell').forEach(td => {
+    w.querySelectorAll('.table-block__cell').forEach(td => {
       if (td === skipTd || td === document.activeElement) return;
       const r = +td.dataset.r, c = +td.dataset.c;
-      td.textContent = this._display(r, c);
+      td.textContent = Formula.displayValue(this._grid, r, c);
     });
   }
 
-  /* ---- 셀의 숫자값 (수식 계산용) ---- */
-  _cellNumber(r, c, visiting) {
-    if (r < 0 || c < 0 || r >= this._rows || c >= this._cols) return NaN;
-    const key = r + ',' + c;
-    if (visiting.has(key)) throw new Error('순환참조');
-    const raw = (this._cells[r][c] || '').trim();
-    if (raw.startsWith('=')) {
-      visiting.add(key);
-      try { return this._evalFormula(raw.slice(1), visiting); }
-      finally { visiting.delete(key); }
-    }
-    if (raw === '') return NaN;
-    const n = Number(raw.replace(/,/g, ''));
-    return isNaN(n) ? NaN : n;
-  }
-
-  /* ---- 수식 평가 (재귀하강 파서) ---- */
-  _evalFormula(src, visiting) {
-    const tokens = this._tokenize(src);
-    let pos = 0;
-    const peek = () => tokens[pos];
-    const next = () => tokens[pos++];
-    const self = this;
-
-    function parseExpr() {
-      let v = parseTerm();
-      while (peek() && (peek().t === '+' || peek().t === '-')) {
-        const op = next().t; const r = parseTerm();
-        v = op === '+' ? v + r : v - r;
-      }
-      return v;
-    }
-    function parseTerm() {
-      let v = parseFactor();
-      while (peek() && (peek().t === '*' || peek().t === '/')) {
-        const op = next().t; const r = parseFactor();
-        v = op === '*' ? v * r : v / r;
-      }
-      return v;
-    }
-    function parseFactor() {
-      const tk = peek();
-      if (!tk) throw new Error('수식 오류');
-      if (tk.t === '-') { next(); return -parseFactor(); }
-      if (tk.t === '+') { next(); return parseFactor(); }
-      if (tk.t === '(') { next(); const v = parseExpr(); expect(')'); return v; }
-      if (tk.t === 'num') { next(); return tk.v; }
-      if (tk.t === 'func') { return parseFunc(); }
-      if (tk.t === 'cell') { next(); const n = self._cellNumber(tk.r, tk.c, visiting); return isNaN(n) ? 0 : n; }
-      throw new Error('수식 오류');
-    }
-    function expect(t) { const tk = next(); if (!tk || tk.t !== t) throw new Error('괄호 오류'); }
-
-    function gatherArg() {
-      // 인자는 범위(A1:B2) 또는 일반 식
-      if (peek() && peek().t === 'cell' && tokens[pos + 1] && tokens[pos + 1].t === ':') {
-        const a = next(); next(); const b = next();   // cell ':' cell
-        if (!b || b.t !== 'cell') throw new Error('범위 오류');
-        const vals = [];
-        const r1 = Math.min(a.r, b.r), r2 = Math.max(a.r, b.r);
-        const c1 = Math.min(a.c, b.c), c2 = Math.max(a.c, b.c);
-        for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) {
-          const n = self._cellNumber(r, c, visiting);
-          if (!isNaN(n)) vals.push(n);
-        }
-        return vals;
-      }
-      return [parseExpr()];
-    }
-    function parseFunc() {
-      const fn = next().name;
-      expect('(');
-      let values = [];
-      if (peek() && peek().t !== ')') {
-        values = values.concat(gatherArg());
-        while (peek() && peek().t === ',') { next(); values = values.concat(gatherArg()); }
-      }
-      expect(')');
-      return applyFunc(fn, values);
-    }
-    function applyFunc(fn, vals) {
-      const nums = vals.filter(v => typeof v === 'number' && !isNaN(v));
-      switch (fn) {
-        case 'SUM':     return nums.reduce((a, b) => a + b, 0);
-        case 'AVERAGE':
-        case 'AVG':     return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : NaN;
-        case 'MAX':     return nums.length ? Math.max(...nums) : NaN;
-        case 'MIN':     return nums.length ? Math.min(...nums) : NaN;
-        case 'COUNT':   return nums.length;
-        case 'PRODUCT': return nums.length ? nums.reduce((a, b) => a * b, 1) : NaN;
-        case 'ROUND': { const x = nums[0] || 0, d = nums[1] || 0, p = Math.pow(10, d); return Math.round(x * p) / p; }
-        case 'ABS':     return Math.abs(nums[0] || 0);
-        default: throw new Error('알 수 없는 함수: ' + fn);
-      }
-    }
-
-    const result = parseExpr();
-    if (pos < tokens.length) throw new Error('수식 오류');
-    return result;
-  }
-
-  _tokenize(src) {
-    const tokens = [];
-    let i = 0;
-    const isLetter = (ch) => /[A-Za-z]/.test(ch);
-    const isDigit = (ch) => /[0-9]/.test(ch);
-    while (i < src.length) {
-      const ch = src[i];
-      if (ch === ' ' || ch === '\t') { i++; continue; }
-      if ('+-*/(),:'.includes(ch)) { tokens.push({ t: ch }); i++; continue; }
-      if (isDigit(ch) || (ch === '.' && isDigit(src[i + 1]))) {
-        let s = ''; while (i < src.length && /[0-9.]/.test(src[i])) s += src[i++];
-        tokens.push({ t: 'num', v: parseFloat(s) }); continue;
-      }
-      if (isLetter(ch)) {
-        let letters = ''; while (i < src.length && isLetter(src[i])) letters += src[i++];
-        let digits = ''; while (i < src.length && isDigit(src[i])) digits += src[i++];
-        if (digits) tokens.push({ t: 'cell', r: parseInt(digits, 10) - 1, c: SpreadsheetTool.colIndex(letters) });
-        else tokens.push({ t: 'func', name: letters.toUpperCase() });
-        continue;
-      }
-      throw new Error('알 수 없는 문자: ' + ch);
-    }
-    return tokens;
-  }
-
   save() {
-    if (this._wrapper) {
-      this._wrapper.querySelectorAll('.spreadsheet-block__cell').forEach(td => {
-        if (td === document.activeElement) {
-          const r = +td.dataset.r, c = +td.dataset.c;
-          this._cells[r][c] = td.textContent.trim();
-        }
-      });
+    if (this._block) {
+      const active = document.activeElement;
+      if (active && active.classList && active.classList.contains('table-block__cell') && this._block.contains(active)) {
+        const r = +active.dataset.r, c = +active.dataset.c;
+        this._grid[r][c] = active.textContent.trim();
+      }
     }
-    return { cells: this._cells, rows: this._rows, cols: this._cols };
+    return { withHeadings: this._withHeadings, content: this._grid };
   }
 
-  static get sanitize() { return { cells: false }; }
+  static get sanitize() { return { withHeadings: false, content: false }; }
 }

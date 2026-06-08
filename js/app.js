@@ -335,9 +335,9 @@ const App = (() => {
       _scheduleAutosave();
     });
 
-    // 에디터 내용 변경 → 자동 저장 예약 + 단어 수 갱신
+    // 에디터 내용 변경 → 자동 저장 예약 + (단어 수 + 본문→사이드바 즉시 동기화)
     document.addEventListener('darakbang:editorChanged', _scheduleAutosave);
-    document.addEventListener('darakbang:editorChanged', _updateWordCount);
+    document.addEventListener('darakbang:editorChanged', _onEditorChanged);
 
     // 엔터 키로 에디터 포커스 이동
     titleInput?.addEventListener('keydown', (e) => {
@@ -473,8 +473,18 @@ const App = (() => {
     EditorManager.init(pageData);
     Workspace.markClean();
 
-    // 단어 수 갱신 (에디터가 준비된 뒤)
-    setTimeout(_updateWordCount, 250);
+    // 단어수는 로드한 데이터로 즉시 계산(에디터 준비 타이밍/전환 레이스와 무관하게 정확)
+    _setWordCount(pageData.editorData);
+  }
+
+  /* 주어진 editorData 로 단어/글자 수 표시 (동기, 로드 시 사용) */
+  function _setWordCount(editorData) {
+    const el = document.getElementById('word-count');
+    if (!el) return;
+    try {
+      const text = Exporter.plainText(editorData || { blocks: [] }).replace(/\s+/g, ' ').trim();
+      el.textContent = `${text ? text.split(/\s+/).filter(Boolean).length : 0}단어 · ${text.length}자`;
+    } catch { el.textContent = ''; }
   }
 
   /* =========================================================
@@ -825,19 +835,59 @@ const App = (() => {
   }
 
   /* =========================================================
-     단어/글자 수 (요구사항 5)
+     에디터 변경 시: 단어/글자 수 + 본문→사이드바 즉시 순서 동기화
+     (한 번의 save() 결과를 공유해 중복 직렬화를 피함)
   ========================================================= */
-  async function _updateWordCount() {
+  async function _onEditorChanged() {
+    const pageId = Workspace.getCurrentPageId();
     const el = document.getElementById('word-count');
-    if (!el) return;
-    if (!Workspace.getCurrentPageId()) { el.textContent = ''; return; }
-    try {
-      const data = await EditorManager.getEditorData();
+    if (!pageId) { if (el) el.textContent = ''; return; }
+    let data;
+    try { data = await EditorManager.getEditorData(); } catch { return; }
+    // 빠른 페이지 전환 중 늦게 도착한 콜백이 다른 페이지 데이터를 덮어쓰지 않도록 가드
+    if (Workspace.getCurrentPageId() !== pageId) return;
+
+    // 본문에서 하위문서 순서가 바뀌면 자동저장(1.5s)을 기다리지 않고 사이드바 즉시 반영
+    try { if (Workspace.syncChildrenOrderLive(pageId, data)) Sidebar.render(); } catch {}
+
+    // 단어/글자 수
+    if (el) {
       const text = Exporter.plainText(data).replace(/\s+/g, ' ').trim();
-      const chars = text.length;
-      const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
-      el.textContent = `${words}단어 · ${chars}자`;
-    } catch { /* 무시 */ }
+      el.textContent = `${text ? text.split(/\s+/).filter(Boolean).length : 0}단어 · ${text.length}자`;
+    }
+  }
+
+  /* =========================================================
+     하위 페이지(형제) 순서 변경 (요구사항 3 — 사이드바 → 본문 양방향)
+  ========================================================= */
+  async function reorderChildren(parentId, newOrder) {
+    const meta = Workspace.getPageMeta(parentId);
+    if (!meta) return;
+    meta.children = newOrder.slice();   // children 즉시 반영
+    Sidebar.render();                    // 사이드바 즉시 갱신(체감 속도)
+
+    if (parentId === Workspace.getCurrentPageId() && EditorManager.instance) {
+      // 부모가 열려 있으면: 라이브 에디터의 링크 순서를 맞추고 즉시 저장
+      await EditorManager.reorderPageLinks(newOrder);
+      Workspace.markDirty();
+      await _savePage({ silent: true });
+    } else {
+      // 부모가 닫혀 있으면: 저장본 본문 링크 재배치 + 저장
+      await Workspace.reorderChildrenStored(parentId, newOrder);
+    }
+  }
+
+  /* 형제 중 위로(-1)/아래로(+1) 한 칸 이동 */
+  async function moveChildPage(childId, direction) {
+    const meta = Workspace.getPageMeta(childId);
+    if (!meta || !meta.parentId) return false;
+    const ids = Workspace.getChildrenIds(meta.parentId);
+    const idx = ids.indexOf(childId);
+    const target = idx + (direction < 0 ? -1 : 1);
+    if (idx === -1 || target < 0 || target >= ids.length) return false;
+    [ids[idx], ids[target]] = [ids[target], ids[idx]];
+    await reorderChildren(meta.parentId, ids);
+    return true;
   }
 
   /* =========================================================
@@ -848,6 +898,8 @@ const App = (() => {
     navigateToPage,
     createNewPage,
     removeChildLinkFromParent,
+    reorderChildren,
+    moveChildPage,
     duplicatePage,
     exportPageMarkdown,
     exportFullBackup,

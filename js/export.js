@@ -60,20 +60,16 @@ const Exporter = (() => {
 
   function _table(content) {
     if (!content || !content.length) return '';
-    const rows = content.map(r => (r || []).map(c => _inline(c).replace(/\|/g, '\\|')));
+    // 수식(=...)이 있으면 계산된 표시값으로 내보낸다
+    let grid = content.map(r => (r || []).map(c => (c == null ? '' : String(c))));
+    try { if (typeof Formula !== 'undefined') grid = Formula.computeGrid(grid); } catch {}
+    const rows = grid.map(r => r.map(c => _inline(c).replace(/\|/g, '\\|')));
     const cols = Math.max(...rows.map(r => r.length));
     const norm = rows.map(r => { while (r.length < cols) r.push(''); return r; });
     let out = `| ${norm[0].join(' | ')} |\n`;
     out += `| ${Array(cols).fill('---').join(' | ')} |\n`;
     for (let i = 1; i < norm.length; i++) out += `| ${norm[i].join(' | ')} |\n`;
     return out + '\n';
-  }
-
-  function _spreadsheet(cells) {
-    if (!cells || !cells.length) return '';
-    // 원시 수식 대신, 표시값을 계산해서 내보낸다(있으면)
-    const rows = cells.map(r => (r || []).map(c => String(c == null ? '' : c)));
-    return _table(rows);
   }
 
   function blockToMarkdown(b) {
@@ -96,7 +92,7 @@ const Exporter = (() => {
       case 'callout': return `> ${d.icon || '💡'} ${_inline(d.text)}\n\n`;
       case 'toggle': return `**${_inline(d.title)}**\n\n${_inline(d.content)}\n\n`;
       case 'table': return _table(d.content);
-      case 'spreadsheet': return _spreadsheet(d.cells);
+      case 'spreadsheet': return _table(d.cells);   // 옛 계산표 호환
       case 'bookmark': return `[${d.title || d.url}](${d.url})\n\n`;
       case 'image': return `*(이미지${d.caption ? ': ' + _stripHtml(d.caption) : ''})*\n\n`;
       case 'attachment': return `📎 ${d.name || '첨부파일'}${d.caption ? ' — ' + _stripHtml(d.caption) : ''}\n\n`;

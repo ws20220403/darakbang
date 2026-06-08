@@ -35,10 +35,12 @@ const EditorManager = (() => {
     const holder = document.getElementById('editorjs');
     holder.innerHTML = '';
 
+    const data = _migrate((pageData.editorData && pageData.editorData.blocks) ? pageData.editorData : { blocks: [] });
+
     _editor = new EditorJS({
       holder: 'editorjs',
       placeholder: '여기에 내용을 작성하세요. "/" 를 입력하면 블록을 추가할 수 있어요.',
-      data: (pageData.editorData && pageData.editorData.blocks) ? pageData.editorData : { blocks: [] },
+      data,
       autofocus: false,
       tools: _tools(),
       i18n: _i18n(),
@@ -56,6 +58,19 @@ const EditorManager = (() => {
     });
 
     return _editor;
+  }
+
+  /* 옛 'spreadsheet' 블록을 통합 'table' 블록으로 변환 (하위호환) */
+  function _migrate(editorData) {
+    if (!editorData || !Array.isArray(editorData.blocks)) return editorData;
+    editorData.blocks = editorData.blocks.map(b => {
+      if (b && b.type === 'spreadsheet') {
+        const cells = (b.data && Array.isArray(b.data.cells)) ? b.data.cells : [];
+        return { ...b, type: 'table', data: { withHeadings: false, content: cells } };
+      }
+      return b;
+    });
+    return editorData;
   }
 
   /* =========================================================
@@ -82,10 +97,9 @@ const EditorManager = (() => {
         class: CodeTool,
         config: { placeholder: '코드를 입력하세요...' },
       },
+      // [v3] 표 + 계산표 통합 (TableTool, blocks.js) — 기존 @editorjs/table 대체
       table: {
-        class: Table,
-        inlineToolbar: true,
-        config: { rows: 2, cols: 2, withHeadings: true },
+        class: TableTool,
       },
       quote: {
         class: Quote,
@@ -101,7 +115,6 @@ const EditorManager = (() => {
       callout:     { class: CalloutTool },
       image:       { class: DarakImageTool },
       attachment:  { class: AttachmentTool },    // [v3] 파일 첨부 (PDF/Word/Excel/hwp…)
-      spreadsheet: { class: SpreadsheetTool },    // [v3] 계산표 (sum/average/max/min…)
       bookmark:    { class: BookmarkTool },
       pageLink:    { class: PageLinkTool },
       toc:         { class: TableOfContentsTool },
@@ -379,13 +392,40 @@ const EditorManager = (() => {
      데이터 추출 / 파괴
   ========================================================= */
   async function getEditorData() {
-    if (!_editor) return { blocks: [] };
+    const ed = _editor;                       // 지역 캡처(전환 중 재할당 방지)
+    if (!ed) return { blocks: [] };
+    try {
+      await ed.isReady;                       // 준비될 때까지 대기(이때 save() API 가 붙음)
+      if (_editor !== ed || typeof ed.save !== 'function') return { blocks: [] }; // 전환/파괴됨
+      return await ed.save();
+    } catch (e) {
+      return { blocks: [] };
+    }
+  }
+
+  /* 라이브 에디터의 하위문서(pageLink) 링크를 newOrder(자식 id 순서)에 맞춰 재배치.
+     슬롯 위치는 그대로 두고 각 슬롯의 pageId 만 재할당(순열) → 안전. (사이드바 → 본문) */
+  async function reorderPageLinks(newOrder) {
+    if (!_editor) return false;
     try {
       await _editor.isReady;
-      return await _editor.save();
+      const out = await _editor.save();
+      const slots = [];
+      (out.blocks || []).forEach(b => {
+        if (b.type === 'pageLink' && b.data && b.data.pageId) slots.push({ id: b.id, pageId: b.data.pageId });
+      });
+      if (slots.length < 2) return false;
+      const rank = (id) => { const k = newOrder.indexOf(id); return k === -1 ? Number.MAX_SAFE_INTEGER : k; };
+      const desired = slots.map(s => s.pageId).sort((a, b) => rank(a) - rank(b));
+      for (let k = 0; k < slots.length; k++) {
+        if (slots[k].pageId !== desired[k]) {
+          try { await _editor.blocks.update(slots[k].id, { pageId: desired[k] }); } catch (e) { /* 무시 */ }
+        }
+      }
+      return true;
     } catch (e) {
-      console.error('에디터 데이터 저장 실패:', e);
-      return { blocks: [] };
+      console.warn('pageLink 재배치 실패:', e);
+      return false;
     }
   }
 
@@ -405,6 +445,7 @@ const EditorManager = (() => {
   return {
     init,
     getEditorData,
+    reorderPageLinks,
     loadImage,
     loadCoverImage,
     destroy,

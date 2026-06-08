@@ -5,7 +5,8 @@
 const Sidebar = (() => {
 
   let _expandedIds = new Set();
-  let _dragRootId = null;   // 루트 페이지 드래그&드롭 진행 중 id (요구사항 3)
+  let _dragId = null;        // 드래그 중인 페이지 id (요구사항 3)
+  let _dragParent = null;    // 드래그 중인 페이지의 부모 id (루트면 null) — 같은 그룹끼리만 재배치
 
   /* =========================================================
      초기화
@@ -135,7 +136,7 @@ const Sidebar = (() => {
     moreBtn.setAttribute('aria-label', '더보기');
     moreBtn.innerHTML = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>`;
 
-    const ctxOpts = { allowReorder: depth === 0 && !meta.parentId };
+    const ctxOpts = { allowReorder: true };   // 루트/하위 모두 위·아래 이동 허용(같은 그룹 내)
 
     moreBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -157,8 +158,8 @@ const Sidebar = (() => {
     row.appendChild(moreBtn);
     li.appendChild(row);
 
-    // 루트 페이지만 드래그&드롭으로 순서 변경 (요구사항 3 — 하위페이지 제외)
-    if (depth === 0 && !meta.parentId) _makeRootDraggable(li, row, meta);
+    // 드래그&드롭으로 순서 변경 (루트는 루트끼리, 하위는 같은 부모의 형제끼리만)
+    _makeDraggable(li, row, meta);
 
     // Children
     if (children.length) {
@@ -179,19 +180,23 @@ const Sidebar = (() => {
   }
 
   /* =========================================================
-     루트 페이지 드래그&드롭 순서 변경 (요구사항 3)
-     - 루트(li[data-depth=0])만 draggable. 하위페이지엔 적용하지 않음.
+     드래그&드롭 순서 변경 (요구사항 3)
+     - 루트는 루트끼리(rootPageOrder), 하위는 같은 부모의 형제끼리만.
+       서로 다른 그룹(부모가 다른 항목) 위에는 드롭 표시/적용을 하지 않음 → 순서 정보가 꼬이지 않음.
   ========================================================= */
   function _clearDropMarkers() {
     document.querySelectorAll('.nav-item.drop-before, .nav-item.drop-after')
       .forEach(el => el.classList.remove('drop-before', 'drop-after'));
   }
 
-  function _makeRootDraggable(li, row, meta) {
+  function _sameGroup(meta) { return (meta.parentId || null) === _dragParent; }
+
+  function _makeDraggable(li, row, meta) {
     row.setAttribute('draggable', 'true');
 
     row.addEventListener('dragstart', (e) => {
-      _dragRootId = meta.id;
+      _dragId = meta.id;
+      _dragParent = meta.parentId || null;
       li.classList.add('nav-dragging');
       if (e.dataTransfer) {
         e.dataTransfer.effectAllowed = 'move';
@@ -200,13 +205,13 @@ const Sidebar = (() => {
     });
 
     row.addEventListener('dragend', () => {
-      _dragRootId = null;
+      _dragId = null; _dragParent = null;
       li.classList.remove('nav-dragging');
       _clearDropMarkers();
     });
 
     li.addEventListener('dragover', (e) => {
-      if (!_dragRootId || _dragRootId === meta.id) return;
+      if (_dragId == null || _dragId === meta.id || !_sameGroup(meta)) return;
       e.preventDefault();
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
       const rect = row.getBoundingClientRect();
@@ -216,27 +221,35 @@ const Sidebar = (() => {
     });
 
     li.addEventListener('dragleave', (e) => {
-      // li 바깥으로 나갈 때만 해제 (자식으로 이동은 무시)
       if (!li.contains(e.relatedTarget)) li.classList.remove('drop-before', 'drop-after');
     });
 
     li.addEventListener('drop', async (e) => {
-      if (!_dragRootId || _dragRootId === meta.id) return;
+      if (_dragId == null || _dragId === meta.id || !_sameGroup(meta)) return;
       e.preventDefault();
       e.stopPropagation();
       const after = li.classList.contains('drop-after');
-      const draggedId = _dragRootId;
+      const draggedId = _dragId;
+      const parent = _dragParent;
       _clearDropMarkers();
 
-      // after 이면 meta 다음 루트 앞에 삽입, 아니면 meta 앞에 삽입
-      let beforeId = meta.id;
-      if (after) {
-        const roots = Workspace.getRootPages();
-        const idx = roots.findIndex(r => r.id === meta.id);
-        beforeId = (idx >= 0 && roots[idx + 1]) ? roots[idx + 1].id : null;
+      if (parent == null) {
+        // 루트끼리
+        let beforeId = meta.id;
+        if (after) {
+          const roots = Workspace.getRootPages();
+          const idx = roots.findIndex(r => r.id === meta.id);
+          beforeId = (idx >= 0 && roots[idx + 1]) ? roots[idx + 1].id : null;
+        }
+        await Workspace.reorderRootPage(draggedId, beforeId);
+        render();
+      } else {
+        // 같은 부모의 형제끼리
+        const ids = Workspace.getChildrenIds(parent).filter(id => id !== draggedId);
+        const i = ids.indexOf(meta.id);
+        ids.splice(after ? i + 1 : i, 0, draggedId);
+        await App.reorderChildren(parent, ids);
       }
-      await Workspace.reorderRootPage(draggedId, beforeId);
-      render();
     });
   }
 
@@ -307,22 +320,25 @@ const Sidebar = (() => {
   function _openContextMenu(e, meta, opts = {}) {
     const isFav = Workspace.isFavorite(meta.id);
 
-    // 루트 페이지에서만 위로/아래로 표시 (요구사항 3)
-    const allowReorder = !!opts.allowReorder && !meta.parentId;
-    const rootIdx   = allowReorder ? Workspace.getRootIndex(meta.id) : -1;
-    const rootCount = allowReorder ? Workspace.getRootCount() : 0;
+    // 위로/아래로 이동 (요구사항 3): 루트는 루트끼리, 하위는 같은 부모 형제끼리
+    const allowReorder = opts.allowReorder === true;
+    const isRoot = !meta.parentId;
+    const sibs = allowReorder ? (isRoot ? Workspace.getRootPages().map(p => p.id) : Workspace.getChildrenIds(meta.parentId)) : [];
+    const sibIdx = sibs.indexOf(meta.id);
 
     UI.openContextMenu(e.clientX, e.clientY, {
       favorited: isFav,
-      showMove:    allowReorder,
-      canMoveUp:   allowReorder && rootIdx > 0,
-      canMoveDown: allowReorder && rootIdx >= 0 && rootIdx < rootCount - 1,
+      showMove:    allowReorder && sibs.length > 1,
+      canMoveUp:   sibIdx > 0,
+      canMoveDown: sibIdx >= 0 && sibIdx < sibs.length - 1,
 
       onMoveUp: async () => {
-        if (await Workspace.moveRootPage(meta.id, -1)) render();
+        if (isRoot) { if (await Workspace.moveRootPage(meta.id, -1)) render(); }
+        else { await App.moveChildPage(meta.id, -1); }
       },
       onMoveDown: async () => {
-        if (await Workspace.moveRootPage(meta.id, +1)) render();
+        if (isRoot) { if (await Workspace.moveRootPage(meta.id, +1)) render(); }
+        else { await App.moveChildPage(meta.id, +1); }
       },
 
       onDuplicate: async () => {
