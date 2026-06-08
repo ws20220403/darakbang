@@ -15,14 +15,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
   <!-- CSS -->
-  <link rel="stylesheet" href="css/reset.css?v=20260605-v3" />
-  <link rel="stylesheet" href="css/variables.css?v=20260605-v3" />
-  <link rel="stylesheet" href="css/layout.css?v=20260605-v3" />
-  <link rel="stylesheet" href="css/sidebar.css?v=20260605-v3" />
-  <link rel="stylesheet" href="css/editor.css?v=20260605-v3" />
-  <link rel="stylesheet" href="css/blocks.css?v=20260605-v3" />
-  <link rel="stylesheet" href="css/components.css?v=20260605-v3" />
-  <link rel="stylesheet" href="css/optimize.css?v=20260605-v3" />
+  <link rel="stylesheet" href="css/reset.css?v=20260608-v3i" />
+  <link rel="stylesheet" href="css/variables.css?v=20260608-v3i" />
+  <link rel="stylesheet" href="css/layout.css?v=20260608-v3i" />
+  <link rel="stylesheet" href="css/sidebar.css?v=20260608-v3i" />
+  <link rel="stylesheet" href="css/editor.css?v=20260608-v3i" />
+  <link rel="stylesheet" href="css/blocks.css?v=20260608-v3i" />
+  <link rel="stylesheet" href="css/components.css?v=20260608-v3i" />
+  <link rel="stylesheet" href="css/optimize.css?v=20260608-v3i" />
 
   <!-- Editor.js + 플러그인 (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.30.6/dist/editorjs.umd.min.js"></script>
@@ -30,7 +30,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/nested-list@1.4.3/dist/nested-list.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/checklist@1.6.0/dist/checklist.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/code@2.9.4/dist/code.umd.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@editorjs/table@2.4.5/dist/table.umd.js"></script>
+  <!-- 표는 v3에서 자체 TableTool(blocks.js, 함수 지원)로 대체 → @editorjs/table 미사용 -->
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/delimiter@1.4.2/dist/delimiter.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@2.7.6/dist/quote.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/inline-code@1.5.1/dist/inline-code.umd.min.js"></script>
@@ -394,18 +394,19 @@
   <!-- =========================================================
        JS Modules (순서 중요)
   ========================================================== -->
-  <script src="js/ui.js?v=20260605-v3"></script>
-  <script src="js/samples.js?v=20260605-v3"></script>
-  <script src="js/auth.js?v=20260605-v3"></script>
-  <script src="js/drive.js?v=20260605-v3"></script>
-  <script src="js/local-store.js?v=20260605-v3"></script>
-  <script src="js/storage.js?v=20260605-v3"></script>
-  <script src="js/export.js?v=20260605-v3"></script>
-  <script src="js/workspace.js?v=20260605-v3"></script>
-  <script src="js/blocks.js?v=20260605-v3"></script>
-  <script src="js/editor.js?v=20260605-v3"></script>
-  <script src="js/sidebar.js?v=20260605-v3"></script>
-  <script src="js/app.js?v=20260605-v3"></script>
+  <script src="js/ui.js?v=20260608-v3i"></script>
+  <script src="js/samples.js?v=20260608-v3i"></script>
+  <script src="js/auth.js?v=20260608-v3i"></script>
+  <script src="js/drive.js?v=20260608-v3i"></script>
+  <script src="js/local-store.js?v=20260608-v3i"></script>
+  <script src="js/storage.js?v=20260608-v3i"></script>
+  <script src="js/formula.js?v=20260608-v3i"></script>
+  <script src="js/export.js?v=20260608-v3i"></script>
+  <script src="js/workspace.js?v=20260608-v3i"></script>
+  <script src="js/blocks.js?v=20260608-v3i"></script>
+  <script src="js/editor.js?v=20260608-v3i"></script>
+  <script src="js/sidebar.js?v=20260608-v3i"></script>
+  <script src="js/app.js?v=20260608-v3i"></script>
 
 </body>
 </html>
