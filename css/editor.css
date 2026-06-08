@@ -154,8 +154,15 @@ body.is-block-dragging * {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 2px;
-  max-height: none !important;
-  overflow: visible !important;
+  /* 콘텐츠 개수에 맞춰 자동으로 늘어나되, 화면을 과하게 넘기면 내부 스크롤 */
+  max-height: min(68vh, 460px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+/* 팝오버 컨테이너도 화면 높이를 넘지 않도록(검색창+그리드 합쳐 cap) */
+.ce-toolbox .ce-popover__container,
+.ce-toolbox.ce-popover {
+  max-height: 84vh;
 }
 .ce-toolbox .ce-popover-item {
   width: auto;
