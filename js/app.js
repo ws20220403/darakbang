@@ -16,6 +16,7 @@ const App = (() => {
   let _coverResizeHandler  = null;
   let _autosaveTimer       = null;   // 디바운스 자동저장
   const AUTOSAVE_DELAY     = 1500;   // ms
+  let _bodyLinks           = new Set(); // 현재 페이지 본문의 하위문서 링크 스냅샷(삭제 동기화용)
 
   /* =========================================================
      자동 저장 / 저장 상태 표시
@@ -475,6 +476,9 @@ const App = (() => {
 
     // 단어수는 로드한 데이터로 즉시 계산(에디터 준비 타이밍/전환 레이스와 무관하게 정확)
     _setWordCount(pageData.editorData);
+
+    // 본문 링크 스냅샷 초기화(로드 시점) — 이후 '이번에 지운' 링크만 트리에서 제거
+    _bodyLinks = _bodyLinkSet(pageData.editorData);
   }
 
   /* 주어진 editorData 로 단어/글자 수 표시 (동기, 로드 시 사용) */
@@ -846,6 +850,11 @@ const App = (() => {
     try { data = await EditorManager.getEditorData(); } catch { return; }
     // 빠른 페이지 전환 중 늦게 도착한 콜백이 다른 페이지 데이터를 덮어쓰지 않도록 가드
     if (Workspace.getCurrentPageId() !== pageId) return;
+    // 빈/오류 데이터(블록 0개)는 무시 — 전환·파괴 레이스에서 children 을 잘못 지우지 않도록 안전장치
+    if (!data.blocks || data.blocks.length === 0) return;
+
+    // 본문에서 하위문서 링크를 지웠으면 사이드바(좌측 탭)에서도 제거 (요구사항 2)
+    try { await _reconcileChildrenWithBody(pageId, data); } catch {}
 
     // 본문에서 하위문서 순서가 바뀌면 자동저장(1.5s)을 기다리지 않고 사이드바 즉시 반영
     try { if (Workspace.syncChildrenOrderLive(pageId, data)) Sidebar.render(); } catch {}
@@ -855,6 +864,37 @@ const App = (() => {
       const text = Exporter.plainText(data).replace(/\s+/g, ' ').trim();
       el.textContent = `${text ? text.split(/\s+/).filter(Boolean).length : 0}단어 · ${text.length}자`;
     }
+  }
+
+  /* 본문 pageLink 의 pageId 집합 */
+  function _bodyLinkSet(editorData) {
+    const s = new Set();
+    const blocks = (editorData && Array.isArray(editorData.blocks)) ? editorData.blocks : [];
+    for (const b of blocks) if (b && b.type === 'pageLink' && b.data && b.data.pageId) s.add(b.data.pageId);
+    return s;
+  }
+
+  /* 본문의 하위문서(pageLink) 링크를 '이번에' 지웠으면, 해당 하위 페이지를 트리에서도 제거.
+     - 로드 시점 스냅샷(_bodyLinks)과 비교해, 원래 링크가 있던 것이 사라진 경우만 삭제
+       → 예전 데이터(원래 링크 없던 자식)는 건드리지 않음(오삭제 방지).
+     - 구글 모드는 드라이브 휴지통으로 안전 삭제(복구 가능). 루트/하위 모두 동일. */
+  async function _reconcileChildrenWithBody(pageId, data) {
+    const meta = Workspace.getPageMeta(pageId);
+    if (!meta || !Array.isArray(meta.children)) { _bodyLinks = _bodyLinkSet(data); return false; }
+
+    const curr = _bodyLinkSet(data);
+    const removed = meta.children.filter(id =>
+      _bodyLinks.has(id) && !curr.has(id) && Workspace.getPageMeta(id)
+    );
+    _bodyLinks = curr;   // 스냅샷 갱신(추가/삭제 모두 추적)
+
+    if (!removed.length) return false;
+    for (const childId of removed) {
+      try { await Workspace.deletePage(childId); } catch (e) { console.warn('하위문서 동기 삭제 실패:', e); }
+    }
+    Sidebar.render();
+    UI.toast(`하위 문서 ${removed.length}개를 본문과 함께 삭제했습니다.` + (Storage.isDemo() ? '' : ' (드라이브 휴지통에서 복구 가능)'), 'info', 4500);
+    return true;
   }
 
   /* =========================================================

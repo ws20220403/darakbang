@@ -672,11 +672,11 @@ class AttachmentTool {
 }
 
 /* =========================================================
-   TABLE (표 + 계산표 통합) — v3
-   · 기본 디자인은 기존 '표'를 따르고, 셀에 =SUM(A1:A3) 같은 함수를 쓰면 계산.
-   · 수식을 입력하려고 하면 열(A·B·C) / 행(1·2·3) 좌표가 옅게 나타남(표 크기 불변, 오버레이).
-   · 데이터: { withHeadings, content:[[..]] } (기존 표와 호환). 옛 계산표 { cells } 도 읽음.
-   · 수식 엔진은 formula.js(Formula) 공용 사용.
+   TABLE (표 + 함수 통합) — v4
+   · 기존 '표' 디자인(전체폭, 기본 2×2)을 따르고, 셀에 =SUM(A1:A3) 등 함수를 쓰면 계산.
+   · 수식 입력 시(셀이 '='로 시작) 열(A·B·C)/행(1·2·3) 좌표 + 함수 힌트가 옅게 나타남(표 크기 불변).
+   · 행/열 추가는 표 오른쪽/아래의 ＋ 버튼으로(추가가 끝에). 머리글·천단위콤마·행열삭제는 블록 설정(⠿)에서.
+   · 데이터: { withHeadings, content:[[..]], useThousands }. 옛 계산표 { cells } 도 읽음.
 ========================================================= */
 class TableTool {
   static get toolbox() {
@@ -689,17 +689,19 @@ class TableTool {
   constructor({ data, readOnly }) {
     this.readOnly = readOnly;
     const d = data || {};
-    // 기존 표(content) · 옛 계산표(cells) 모두 수용
     const src = Array.isArray(d.content) ? d.content : (Array.isArray(d.cells) ? d.cells : null);
+    this._isNew = !src;                                    // 새로 추가된 표인지
     this._grid = this._normalize(src);
-    this._withHeadings = d.withHeadings !== undefined ? !!d.withHeadings : false;
+    this._withHeadings = d.withHeadings !== undefined ? !!d.withHeadings : true;   // 새 표는 머리글 ON (기존 표와 동일)
+    this._thousands   = d.useThousands !== undefined ? !!d.useThousands : true;    // 천단위 콤마 기본 ON(끌 수 있음)
     this._block = null;
+    this._lastCell = null;                                 // 마지막 포커스 셀(설정 메뉴 행/열 삭제 기준)
   }
 
   _normalize(src) {
     let c = Array.isArray(src) && src.length
       ? src.map(r => Array.isArray(r) ? r.slice() : [])
-      : [['', '', ''], ['', '', ''], ['', '', '']];
+      : [['', ''], ['', '']];                              // 기본 2×2 (전체폭으로 표시)
     const cols = Math.max(1, ...c.map(r => r.length));
     c = c.map(r => { const row = r.map(v => (v == null ? '' : String(v))); while (row.length < cols) row.push(''); return row; });
     return c;
@@ -707,6 +709,24 @@ class TableTool {
 
   get _rows() { return this._grid.length; }
   get _cols() { return this._grid[0] ? this._grid[0].length : 0; }
+
+  /* 표시값: 수식이면 계산결과(+천단위 콤마 옵션), 아니면 원문 */
+  _display(r, c) {
+    const raw = (this._grid[r] && this._grid[r][c]) || '';
+    if (Formula.isFormula(raw)) {
+      const v = Formula.displayValue(this._grid, r, c);
+      return this._thousands ? this._comma(v) : v;
+    }
+    return raw;
+  }
+  _comma(s) {
+    if (s === '#ERR' || s === '' || s == null) return s;
+    const n = Number(s);
+    if (!isFinite(n)) return s;
+    const neg = n < 0;
+    const [int, dec] = String(Math.abs(n)).split('.');
+    return (neg ? '-' : '') + int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (dec ? '.' + dec : '');
+  }
 
   render() {
     const block = document.createElement('div');
@@ -722,9 +742,12 @@ class TableTool {
     w.innerHTML = '';
     w.classList.toggle('with-headings', this._withHeadings);
 
+    // [표 + 오른쪽 열추가 버튼] 가로 묶음
+    const grid = document.createElement('div');
+    grid.className = 'table-block__grid';
+
     const scroll = document.createElement('div');
     scroll.className = 'table-block__scroll';
-
     const table = document.createElement('table');
     table.className = 'table-block__table';
     const tbody = document.createElement('tbody');
@@ -735,24 +758,49 @@ class TableTool {
     }
     table.appendChild(tbody);
     scroll.appendChild(table);
-    w.appendChild(scroll);
+    grid.appendChild(scroll);
 
-    // 좌표 라벨 레이어(수식 입력 시에만 표시) — 오버레이라 표 크기에 영향 없음
+    if (!this.readOnly) grid.appendChild(this._addBtn('col'));   // 오른쪽: 열 추가
+    w.appendChild(grid);
+    if (!this.readOnly) {
+      w.appendChild(this._addBtn('row'));      // 아래: 행 추가
+      w.appendChild(this._bar());              // 호버 시 보이는 컴팩트 툴바(머리글·천단위·행열 삭제)
+    }
+
+    // 좌표 라벨 (수식 입력 시에만 보임 — 오버레이)
     this._colLabels = document.createElement('div');
     this._colLabels.className = 'table-block__labels table-block__labels--col';
     this._rowLabels = document.createElement('div');
     this._rowLabels.className = 'table-block__labels table-block__labels--row';
-    for (let c = 0; c < this._cols; c++) {
-      const s = document.createElement('span'); s.textContent = Formula.colName(c); this._colLabels.appendChild(s);
-    }
-    for (let r = 0; r < this._rows; r++) {
-      const s = document.createElement('span'); s.textContent = String(r + 1); this._rowLabels.appendChild(s);
-    }
+    for (let c = 0; c < this._cols; c++) { const s = document.createElement('span'); s.textContent = Formula.colName(c); this._colLabels.appendChild(s); }
+    for (let r = 0; r < this._rows; r++) { const s = document.createElement('span'); s.textContent = String(r + 1); this._rowLabels.appendChild(s); }
     w.appendChild(this._colLabels);
     w.appendChild(this._rowLabels);
 
-    if (!this.readOnly) w.appendChild(this._toolbar());
+    // 함수 힌트 (수식 입력 시에만) — 가능한 기능만 명확히
+    const hint = document.createElement('div');
+    hint.className = 'table-block__hint';
+    hint.innerHTML = '함수 <b>=SUM · AVERAGE · MAX · MIN · COUNT · PRODUCT · ROUND · ABS</b> &nbsp;|&nbsp; 사칙연산 <b>+ − × ÷ ( )</b> &nbsp;|&nbsp; 범위 <b>A1:B3</b>';
+    w.appendChild(hint);
+
     this._recalcAll();
+  }
+
+  _addBtn(kind) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'table-block__add table-block__add--' + kind;
+    b.title = kind === 'col' ? '열 추가' : '행 추가';
+    b.setAttribute('aria-label', b.title);
+    b.textContent = '+';
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (kind === 'col') this._grid.forEach(row => row.push(''));
+      else this._grid.push(Array(this._cols).fill(''));
+      Workspace.markDirty();
+      this._renderAll();
+    });
+    return b;
   }
 
   _cellTd(r, c) {
@@ -762,10 +810,11 @@ class TableTool {
     td.dataset.r = r; td.dataset.c = c;
     td.contentEditable = this.readOnly ? 'false' : 'true';
     td.spellcheck = false;
-    td.textContent = Formula.displayValue(this._grid, r, c);
+    td.textContent = this._display(r, c);
     if (this.readOnly) return td;
 
     td.addEventListener('focus', () => {
+      this._lastCell = { r, c };
       const raw = this._grid[r][c] || '';
       if (td.textContent !== raw) td.textContent = raw;
       this._setFormulaMode(Formula.isFormula(raw));
@@ -779,7 +828,7 @@ class TableTool {
     td.addEventListener('blur', () => {
       this._grid[r][c] = td.textContent.trim();
       this._setFormulaMode(false);
-      td.textContent = Formula.displayValue(this._grid, r, c);
+      td.textContent = this._display(r, c);
       this._recalcAll();
     });
     td.addEventListener('keydown', (e) => this._onCellKey(e, r, c));
@@ -807,7 +856,6 @@ class TableTool {
     if (on) this._positionLabels();
   }
 
-  // 좌표 라벨을 각 열 중앙 위 / 각 행 중앙 왼쪽에 배치 (오버레이)
   _positionLabels() {
     if (!this._block || !this._colLabels) return;
     const base = this._block.getBoundingClientRect();
@@ -815,41 +863,12 @@ class TableTool {
     const rowSpans = this._rowLabels.children;
     for (let c = 0; c < this._cols; c++) {
       const cell = this._block.querySelector(`.table-block__cell[data-r="0"][data-c="${c}"]`);
-      if (cell && colSpans[c]) {
-        const rc = cell.getBoundingClientRect();
-        colSpans[c].style.left = (rc.left - base.left + rc.width / 2) + 'px';
-      }
+      if (cell && colSpans[c]) { const rc = cell.getBoundingClientRect(); colSpans[c].style.left = (rc.left - base.left + rc.width / 2) + 'px'; }
     }
     for (let r = 0; r < this._rows; r++) {
       const cell = this._block.querySelector(`.table-block__cell[data-r="${r}"][data-c="0"]`);
-      if (cell && rowSpans[r]) {
-        const rc = cell.getBoundingClientRect();
-        rowSpans[r].style.top = (rc.top - base.top + rc.height / 2) + 'px';
-      }
+      if (cell && rowSpans[r]) { const rc = cell.getBoundingClientRect(); rowSpans[r].style.top = (rc.top - base.top + rc.height / 2) + 'px'; }
     }
-  }
-
-  _toolbar() {
-    const bar = document.createElement('div');
-    bar.className = 'table-block__toolbar';
-    const mk = (label, title, fn) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'table-block__btn';
-      b.textContent = label; b.title = title;
-      b.addEventListener('click', (e) => { e.stopPropagation(); fn(); Workspace.markDirty(); this._renderAll(); });
-      return b;
-    };
-    bar.appendChild(mk('+행', '행 추가', () => this._grid.push(Array(this._cols).fill(''))));
-    bar.appendChild(mk('−행', '마지막 행 삭제', () => { if (this._rows > 1) this._grid.pop(); }));
-    bar.appendChild(mk('+열', '열 추가', () => this._grid.forEach(row => row.push(''))));
-    bar.appendChild(mk('−열', '마지막 열 삭제', () => { if (this._cols > 1) this._grid.forEach(row => row.pop()); }));
-    bar.appendChild(mk(this._withHeadings ? '헤더 ✓' : '헤더', '첫 행을 머리글로', () => { this._withHeadings = !this._withHeadings; }));
-    const hint = document.createElement('span');
-    hint.className = 'table-block__hint';
-    hint.textContent = '=SUM, AVERAGE, MAX, MIN, COUNT …';
-    bar.appendChild(hint);
-    return bar;
   }
 
   _recalcAll(skipTd) {
@@ -858,8 +877,46 @@ class TableTool {
     w.querySelectorAll('.table-block__cell').forEach(td => {
       if (td === skipTd || td === document.activeElement) return;
       const r = +td.dataset.r, c = +td.dataset.c;
-      td.textContent = Formula.displayValue(this._grid, r, c);
+      td.textContent = this._display(r, c);
     });
+  }
+
+  /* 호버 시 보이는 컴팩트 툴바: 머리글 / 천단위 콤마 / 행·열 삭제 */
+  _bar() {
+    const bar = document.createElement('div');
+    bar.className = 'table-block__bar';
+    const mk = (label, title, active, fn) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'table-block__bar-btn' + (active ? ' is-active' : '');
+      b.textContent = label; b.title = title;
+      b.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
+      return b;
+    };
+    bar.appendChild(mk('머리글', '첫 행을 머리글로', this._withHeadings,
+      () => { this._withHeadings = !this._withHeadings; Workspace.markDirty(); this._renderAll(); }));
+    bar.appendChild(mk('1,000', '천단위 콤마(함수 결과)', this._thousands,
+      () => { this._thousands = !this._thousands; Workspace.markDirty(); this._renderAll(); }));
+    bar.appendChild(mk('⌫행', '행 삭제(선택 셀 기준)', false, () => this._deleteRow()));
+    bar.appendChild(mk('⌫열', '열 삭제(선택 셀 기준)', false, () => this._deleteCol()));
+    return bar;
+  }
+
+  _deleteRow() {
+    if (this._rows <= 1) return;
+    const r = this._lastCell ? Math.min(this._lastCell.r, this._rows - 1) : this._rows - 1;
+    this._grid.splice(r, 1);
+    this._lastCell = null;
+    Workspace.markDirty();
+    this._renderAll();
+  }
+  _deleteCol() {
+    if (this._cols <= 1) return;
+    const c = this._lastCell ? Math.min(this._lastCell.c, this._cols - 1) : this._cols - 1;
+    this._grid.forEach(row => row.splice(c, 1));
+    this._lastCell = null;
+    Workspace.markDirty();
+    this._renderAll();
   }
 
   save() {
@@ -870,8 +927,8 @@ class TableTool {
         this._grid[r][c] = active.textContent.trim();
       }
     }
-    return { withHeadings: this._withHeadings, content: this._grid };
+    return { withHeadings: this._withHeadings, content: this._grid, useThousands: this._thousands };
   }
 
-  static get sanitize() { return { withHeadings: false, content: false }; }
+  static get sanitize() { return { withHeadings: false, content: false, useThousands: false }; }
 }
