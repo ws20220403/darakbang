@@ -627,23 +627,26 @@
 .attachment-block__download svg { width: 17px; height: 17px; }
 
 /* =========================================================
-   TABLE BLOCK (표 + 계산표 통합) — v3
-   기본은 기존 '표' 디자인. 수식 입력 시 좌표(A·B·C / 1·2·3) 오버레이만 표시.
+   TABLE BLOCK (표 + 함수 통합) — v4
+   기존 '표' 디자인(전체폭). 행/열 추가는 오른쪽·아래 ＋ 버튼.
+   수식 입력 시에만 좌표(A·B·C / 1·2·3)와 함수 힌트가 옅게 표시.
 ========================================================= */
 .table-block { position: relative; margin: 8px 0; }
 
-.table-block__scroll { overflow-x: auto; }
+/* 표 + 오른쪽 열추가 버튼 가로 묶음 */
+.table-block__grid { display: flex; align-items: stretch; width: 100%; }
+.table-block__scroll { flex: 1; min-width: 0; overflow-x: auto; }
 
 .table-block__table {
   border-collapse: collapse;
   font-size: 0.9rem;
   table-layout: fixed;
+  width: 100%;                 /* 입력 영역 좌우 폭을 꽉 채움 */
 }
 .table-block__cell {
   border: 1px solid var(--border-color);
   padding: 6px 10px;
-  min-width: 64px;
-  max-width: 360px;
+  min-width: 48px;
   color: var(--text-primary);
   vertical-align: top;
   white-space: pre-wrap;
@@ -658,6 +661,22 @@
   box-shadow: inset 0 0 0 2px var(--color-brand);
   background: var(--color-brand-dim);
 }
+
+/* 행/열 추가 ＋ 버튼 (기존 표처럼 가장자리에). 평소 옅고, 표에 호버하면 또렷 */
+.table-block__add {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  border: 1px dashed var(--border-color);
+  cursor: pointer;
+  font-size: 14px; line-height: 1;
+  opacity: 0.45;
+  transition: all var(--transition-fast);
+}
+.table-block:hover .table-block__add { opacity: 1; }
+.table-block__add:hover { background: var(--color-brand-dim); color: var(--color-brand); border-color: var(--color-brand); }
+.table-block__add--col { width: 18px; flex-shrink: 0; margin-left: 3px; border-radius: var(--border-radius-sm); }
+.table-block__add--row { width: 100%; height: 16px; margin-top: 3px; border-radius: var(--border-radius-sm); }
 
 /* 좌표 라벨 — 평소 숨김, 수식 입력 시에만 옅게 (오버레이라 표 크기 불변) */
 .table-block__labels {
@@ -681,20 +700,32 @@
 .table-block__labels--col span { top: 0;  transform: translate(-50%, calc(-100% - 1px)); }
 .table-block__labels--row span { left: 0; transform: translate(calc(-100% - 1px), -50%); }
 
-.table-block__toolbar {
-  display: flex; align-items: center; gap: var(--spacing-xs);
-  flex-wrap: wrap; margin-top: var(--spacing-xs);
+/* 함수 힌트 — 평소 숨김, 수식 입력(=) 시에만 표시 */
+.table-block__hint {
+  display: none;
+  margin-top: 5px;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--text-muted);
 }
-.table-block__btn {
-  padding: 3px 10px; font-size: 0.8rem;
+.table-block.formula-editing .table-block__hint { display: block; }
+.table-block__hint b { color: var(--color-brand); font-weight: 600; }
+
+/* 컴팩트 툴바 — 평소 옅게, 표에 호버하면 또렷 */
+.table-block__bar {
+  display: flex; gap: 4px; flex-wrap: wrap;
+  margin-top: 4px;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+.table-block:hover .table-block__bar,
+.table-block:focus-within .table-block__bar { opacity: 1; }
+.table-block__bar-btn {
+  padding: 2px 9px; font-size: 0.74rem;
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-sm);
   background: var(--bg-hover); color: var(--text-secondary);
   cursor: pointer; transition: all var(--transition-fast);
 }
-.table-block__btn:hover { background: var(--bg-active); color: var(--text-primary); border-color: var(--color-brand); }
-.table-block__hint {
-  margin-left: auto; font-size: 0.72rem;
-  color: var(--text-muted); font-family: var(--font-mono);
-}
-@media (max-width: 768px) { .table-block__hint { display: none; } }
+.table-block__bar-btn:hover { background: var(--bg-active); color: var(--text-primary); border-color: var(--color-brand); }
+.table-block__bar-btn.is-active { background: var(--color-brand-dim); color: var(--color-brand); border-color: var(--color-brand); }
