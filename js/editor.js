@@ -391,15 +391,20 @@ const EditorManager = (() => {
   /* =========================================================
      데이터 추출 / 파괴
   ========================================================= */
+  // 에디터 데이터 반환. 준비 안 됨/오류면 null (빈 데이터로 덮어써 저장하지 않도록).
+  // isReady 가 끝내 안 끝나도 최대 8초만 대기 → 이동/저장이 영영 멈추지 않음(안정성).
   async function getEditorData() {
     const ed = _editor;                       // 지역 캡처(전환 중 재할당 방지)
-    if (!ed) return { blocks: [] };
+    if (!ed || !ed.isReady) return null;
     try {
-      await ed.isReady;                       // 준비될 때까지 대기(이때 save() API 가 붙음)
-      if (_editor !== ed || typeof ed.save !== 'function') return { blocks: [] }; // 전환/파괴됨
+      const ready = await Promise.race([
+        ed.isReady.then(() => true),
+        new Promise(res => setTimeout(() => res(false), 8000)),
+      ]);
+      if (!ready || _editor !== ed || typeof ed.save !== 'function') return null; // 미준비/전환/파괴
       return await ed.save();
     } catch (e) {
-      return { blocks: [] };
+      return null;
     }
   }
 

@@ -442,7 +442,7 @@ const Workspace = (() => {
   /* =========================================================
      페이지 저장
   ========================================================= */
-  async function savePage(pageId, editorData, title, icon, coverImageId) {
+  async function savePage(pageId, editorData, title, icon, coverImageId, options = {}) {
     if (!UI.isOnline() && !Storage.isDemo()) {
       UI.toast('인터넷 연결이 필요합니다. 연결 후 저장해주세요.', 'warning', 5000);
       return false;
@@ -453,8 +453,8 @@ const Workspace = (() => {
 
     // 다른 기기에서 먼저 저장한 변경을 조용히 덮어쓰지 않도록 방어합니다.
     // 로컬에서 마지막으로 읽은 updatedAt과 Drive의 현재 updatedAt이 다르면 저장을 중단합니다.
-    // (데모 모드는 단일 브라우저 저장이라 충돌 개념이 없으므로 건너뜁니다.)
-    if (!Storage.isDemo()) {
+    // (데모 모드는 충돌 개념이 없고, 자동저장은 속도 위해 생략 — 명시적 저장에서만 검사)
+    if (!Storage.isDemo() && !options.skipConflictCheck) {
       try {
         const remote = await Storage.readPage(pageId);
         if (

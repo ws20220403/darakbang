@@ -112,7 +112,28 @@ const Drive = (() => {
       _cache.imagesFolderId = images.id;
     }
 
+    // [속도] 모든 페이지 파일 ID를 한 번의 목록 조회로 미리 캐시
+    //  → 이후 페이지 읽기에서 개별 검색(findFile)이 불필요해져 문서 이동이 빨라짐.
+    try { await _preloadPageFileIds(); } catch (e) { console.warn('페이지 ID 사전캐시 실패(개별 검색으로 대체):', e); }
+
     return _cache;
+  }
+
+  // pages 폴더의 모든 {id}.json 파일을 한 번에 나열해 _pageFileIds 캐시 채움
+  async function _preloadPageFileIds() {
+    const folderId = _cache.pagesFolderId;
+    if (!folderId) return;
+    let pageToken = null;
+    do {
+      const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+      let url = `${BASE_URL}/files?q=${q}&fields=nextPageToken,files(id,name)&spaces=drive&pageSize=1000`;
+      if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
+      const res = await _fetch(url);
+      (res?.files || []).forEach(f => {
+        if (f.name && f.name.endsWith('.json')) _pageFileIds[f.name.slice(0, -5)] = f.id;
+      });
+      pageToken = res?.nextPageToken || null;
+    } while (pageToken);
   }
 
   /* =========================================================

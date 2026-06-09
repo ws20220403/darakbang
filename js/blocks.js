@@ -693,7 +693,8 @@ class TableTool {
     this._isNew = !src;                                    // 새로 추가된 표인지
     this._grid = this._normalize(src);
     this._withHeadings = d.withHeadings !== undefined ? !!d.withHeadings : true;   // 새 표는 머리글 ON (기존 표와 동일)
-    this._thousands   = d.useThousands !== undefined ? !!d.useThousands : true;    // 천단위 콤마 기본 ON(끌 수 있음)
+    // 천단위 콤마: 켜면 '표 전체' 숫자를 반올림(정수)+콤마로 표시. 직접 입력값이 갑자기 바뀌지 않도록 기본 OFF.
+    this._thousands   = d.useThousands !== undefined ? !!d.useThousands : false;
     this._block = null;
     this._lastCell = null;                                 // 마지막 포커스 셀(설정 메뉴 행/열 삭제 기준)
   }
@@ -710,22 +711,26 @@ class TableTool {
   get _rows() { return this._grid.length; }
   get _cols() { return this._grid[0] ? this._grid[0].length : 0; }
 
-  /* 표시값: 수식이면 계산결과(+천단위 콤마 옵션), 아니면 원문 */
+  /* 표시값:
+     - ' 로 시작 → 텍스트 고유값(나머지 그대로)
+     - 수식 → 계산결과
+     - 그 외 → 원문
+     천단위 콤마(표 전체 옵션)가 켜지면 '숫자로 보이는 모든 값'을 반올림(정수)+콤마로 표시. */
   _display(r, c) {
     const raw = (this._grid[r] && this._grid[r][c]) || '';
-    if (Formula.isFormula(raw)) {
-      const v = Formula.displayValue(this._grid, r, c);
-      return this._thousands ? this._comma(v) : v;
-    }
-    return raw;
+    if (typeof raw === 'string' && raw.startsWith("'")) return raw.slice(1);   // 텍스트
+    if (Formula.isFormula(raw)) return this._fmtNum(Formula.displayValue(this._grid, r, c));
+    return this._fmtNum(raw);
   }
-  _comma(s) {
+  // 천단위 옵션이 켜져 있고 값이 숫자처럼 보이면 → 반올림(소수점 생략) + 콤마. 아니면 원문.
+  _fmtNum(s) {
     if (s === '#ERR' || s === '' || s == null) return s;
-    const n = Number(s);
+    if (!this._thousands) return s;
+    const str = String(s).trim();
+    if (!/^-?\d[\d,]*(\.\d+)?$/.test(str)) return s;          // 숫자 형태가 아니면 텍스트로 둠
+    const n = Number(str.replace(/,/g, ''));
     if (!isFinite(n)) return s;
-    const neg = n < 0;
-    const [int, dec] = String(Math.abs(n)).split('.');
-    return (neg ? '-' : '') + int.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (dec ? '.' + dec : '');
+    return Math.round(n).toLocaleString('en-US');             // 반올림 + 천단위 콤마
   }
 
   render() {
@@ -780,7 +785,7 @@ class TableTool {
     // 함수 힌트 (수식 입력 시에만) — 가능한 기능만 명확히
     const hint = document.createElement('div');
     hint.className = 'table-block__hint';
-    hint.innerHTML = '함수 <b>=SUM · AVERAGE · MAX · MIN · COUNT · PRODUCT · ROUND · ABS</b> &nbsp;|&nbsp; 사칙연산 <b>+ − × ÷ ( )</b> &nbsp;|&nbsp; 범위 <b>A1:B3</b>';
+    hint.innerHTML = '함수 <b>=SUM · AVERAGE · MAX · MIN · COUNT · PRODUCT · ROUND · ABS</b> &nbsp;|&nbsp; 사칙연산 <b>+ − × ÷ ( )</b> &nbsp;|&nbsp; 범위 <b>A1:B3</b> &nbsp;|&nbsp; 맨 앞 <b>\'</b> → 그대로 텍스트';
     w.appendChild(hint);
 
     this._recalcAll();
@@ -835,18 +840,58 @@ class TableTool {
     return td;
   }
 
+  // 셀 (nr,nc) 로 포커스 이동. atStart=true 면 커서를 맨 앞, 아니면 맨 뒤로.
+  _focusCell(nr, nc, atStart) {
+    const t = this._block.querySelector(`.table-block__cell[data-r="${nr}"][data-c="${nc}"]`);
+    if (!t) return false;
+    t.focus();
+    const sel = window.getSelection(); const range = document.createRange();
+    range.selectNodeContents(t); range.collapse(!!atStart);
+    sel.removeAllRanges(); sel.addRange(range);
+    return true;
+  }
+  _caretAtStart(td) {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return true;
+    const range = sel.getRangeAt(0);
+    if (!range.collapsed) return false;
+    const probe = range.cloneRange();
+    probe.selectNodeContents(td); probe.setEnd(range.startContainer, range.startOffset);
+    return probe.toString().length === 0;
+  }
+  _caretAtEnd(td) {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return true;
+    const range = sel.getRangeAt(0);
+    if (!range.collapsed) return false;
+    const probe = range.cloneRange();
+    probe.selectNodeContents(td); probe.setStart(range.endContainer, range.endOffset);
+    return probe.toString().length === 0;
+  }
+
+  // 엑셀식 이동: Enter(아래) / Tab(오른쪽, Shift+Tab 왼쪽) / 방향키.
+  // 방향키 좌우는 셀 안에서 커서 이동하되 끝에 닿으면 옆 셀로. 상하는 위/아래 셀로.
   _onCellKey(e, r, c) {
-    const move = (nr, nc) => {
-      const t = this._block.querySelector(`.table-block__cell[data-r="${nr}"][data-c="${nc}"]`);
-      if (t) { e.preventDefault(); t.focus();
-        const sel = window.getSelection(); const range = document.createRange();
-        range.selectNodeContents(t); range.collapse(false); sel.removeAllRanges(); sel.addRange(range);
-      }
-    };
-    if (e.key === 'Enter') { e.preventDefault(); if (r + 1 < this._rows) move(r + 1, c); else e.target.blur(); }
-    else if (e.key === 'Tab') {
-      if (e.shiftKey) { if (c - 1 >= 0) move(r, c - 1); else if (r - 1 >= 0) move(r - 1, this._cols - 1); }
-      else { if (c + 1 < this._cols) move(r, c + 1); else if (r + 1 < this._rows) move(r + 1, 0); }
+    const td = e.target;
+    const stop = () => { e.preventDefault(); e.stopPropagation(); };  // Editor.js 가 Enter 로 새 줄/블록 만드는 것 차단
+
+    if (e.key === 'Enter') {
+      stop();                                   // 표 위에 빈 줄 생기던 문제 해결
+      if (r + 1 < this._rows) this._focusCell(r + 1, c, true);
+      else td.blur();                           // 마지막 행이면 입력 완료(커밋)
+    } else if (e.key === 'Tab') {
+      stop();
+      if (e.shiftKey) { if (c - 1 >= 0) this._focusCell(r, c - 1, false); else if (r - 1 >= 0) this._focusCell(r - 1, this._cols - 1, false); }
+      else { if (c + 1 < this._cols) this._focusCell(r, c + 1, true); else if (r + 1 < this._rows) this._focusCell(r + 1, 0, true); }
+    } else if (e.key === 'ArrowUp') {
+      if (r - 1 >= 0) { stop(); this._focusCell(r - 1, c, false); }
+    } else if (e.key === 'ArrowDown') {
+      if (r + 1 < this._rows) { stop(); this._focusCell(r + 1, c, true); }
+    } else if (e.key === 'ArrowLeft') {
+      if (this._caretAtStart(td) && c - 1 >= 0) { stop(); this._focusCell(r, c - 1, false); }
+      // 그 외엔 기본 동작(셀 안에서 커서 왼쪽 이동)
+    } else if (e.key === 'ArrowRight') {
+      if (this._caretAtEnd(td) && c + 1 < this._cols) { stop(); this._focusCell(r, c + 1, true); }
     }
   }
 
@@ -895,7 +940,7 @@ class TableTool {
     };
     bar.appendChild(mk('머리글', '첫 행을 머리글로', this._withHeadings,
       () => { this._withHeadings = !this._withHeadings; Workspace.markDirty(); this._renderAll(); }));
-    bar.appendChild(mk('1,000', '천단위 콤마(함수 결과)', this._thousands,
+    bar.appendChild(mk('1,000', '천단위 콤마 · 소수점 반올림 (표 전체 숫자에 적용)', this._thousands,
       () => { this._thousands = !this._thousands; Workspace.markDirty(); this._renderAll(); }));
     bar.appendChild(mk('⌫행', '행 삭제(선택 셀 기준)', false, () => this._deleteRow()));
     bar.appendChild(mk('⌫열', '열 삭제(선택 셀 기준)', false, () => this._deleteCol()));

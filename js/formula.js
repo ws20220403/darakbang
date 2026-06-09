@@ -156,9 +156,10 @@ const Formula = (() => {
     return String(v);
   }
 
-  // (r,c) 셀에 표시할 문자열. 수식이면 계산결과/오류, 아니면 원문.
+  // (r,c) 셀에 표시할 문자열. ' 로 시작하면 텍스트(나머지 그대로), 수식이면 계산결과/오류, 아니면 원문.
   function displayValue(grid, r, c) {
     const raw = ((grid[r] && grid[r][c]) || '').toString();
+    if (raw.startsWith("'")) return raw.slice(1);          // 엑셀식: ' 접두 → 고유 텍스트
     if (raw.trim().startsWith('=')) {
       try { return fmt(evalFormula(grid, raw.trim().slice(1), new Set([r + ',' + c]))); }
       catch (e) { return '#ERR'; }
@@ -166,7 +167,8 @@ const Formula = (() => {
     return raw;
   }
 
-  function isFormula(raw) { return typeof raw === 'string' && raw.trim().startsWith('='); }
+  // ' 로 시작하면 수식이 아니라 텍스트로 취급
+  function isFormula(raw) { return typeof raw === 'string' && !raw.startsWith("'") && raw.trim().startsWith('='); }
 
   // 표 전체의 표시값(내보내기용)
   function computeGrid(grid) {

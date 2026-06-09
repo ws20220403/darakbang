@@ -644,7 +644,14 @@ const App = (() => {
 
     try {
       const editorData = await EditorManager.getEditorData();
-      const saved = await Workspace.savePage(pageId, editorData, title, icon, _currentCoverImageId);
+      // 에디터가 아직 준비 안 됨(null) → 저장할 사용자 내용이 없음. 빈 데이터로 덮어쓰지 말고
+      // 깔끔히 종료(이동 허용). 데이터 손실/무한 멈춤 방지.
+      if (!editorData) {
+        Workspace.markClean();
+        return true;
+      }
+      // 자동/조용한 저장(이동·자동저장)은 충돌검사 읽기를 생략해 속도 ↑. 명시적 저장은 검사 유지.
+      const saved = await Workspace.savePage(pageId, editorData, title, icon, _currentCoverImageId, { skipConflictCheck: !!options.silent });
 
       if (saved) {
         if (!options.silent) UI.toast('저장됐습니다.', 'success');
@@ -850,8 +857,8 @@ const App = (() => {
     try { data = await EditorManager.getEditorData(); } catch { return; }
     // 빠른 페이지 전환 중 늦게 도착한 콜백이 다른 페이지 데이터를 덮어쓰지 않도록 가드
     if (Workspace.getCurrentPageId() !== pageId) return;
-    // 빈/오류 데이터(블록 0개)는 무시 — 전환·파괴 레이스에서 children 을 잘못 지우지 않도록 안전장치
-    if (!data.blocks || data.blocks.length === 0) return;
+    // null(미준비)/빈 데이터(블록 0개)는 무시 — 전환·파괴 레이스에서 children 을 잘못 지우지 않도록 안전장치
+    if (!data || !data.blocks || data.blocks.length === 0) return;
 
     // 본문에서 하위문서 링크를 지웠으면 사이드바(좌측 탭)에서도 제거 (요구사항 2)
     try { await _reconcileChildrenWithBody(pageId, data); } catch {}

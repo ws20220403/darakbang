@@ -40,8 +40,10 @@ const Samples = (() => {
       { type: 'list', data: { style: 'unordered', items: [
         { content: '함수: <code class="inline-code">=SUM</code> · <code class="inline-code">AVERAGE</code> · <code class="inline-code">MAX</code> · <code class="inline-code">MIN</code> · <code class="inline-code">COUNT</code> · <code class="inline-code">PRODUCT</code> · <code class="inline-code">ROUND</code> · <code class="inline-code">ABS</code>', items: [] },
         { content: '사칙연산 <code class="inline-code">+ − × ÷ ( )</code> 와 범위 <code class="inline-code">A1:B3</code> 도 사용 (예: <code class="inline-code">=A1+B2*2</code>)', items: [] },
-        { content: '행/열 추가: 표 <b>오른쪽 ＋(열)</b>, <b>아래 ＋(행)</b> 버튼. 표에 마우스를 올리면 아래 작은 툴바에서 <b>머리글 · 천단위콤마(1,000) · 행/열 삭제</b> 선택', items: [] },
-        { content: '셀을 클릭하면 원래 수식이, 벗어나면 계산값이 보입니다. Tab/Enter로 옆·아래 칸 이동', items: [] },
+        { content: '<b>셀 이동</b>: <b>방향키</b>(↑↓←→)로 칸 이동(엑셀식 — 좌우는 글자 끝에서 옆 칸으로), <b>Tab</b>(오른쪽)·<b>Enter</b>(아래)로도 이동', items: [] },
+        { content: '<b>텍스트로 두기</b>: 맨 앞에 <code class="inline-code">\'</code>(작은따옴표)를 붙이면 그대로 글자가 됩니다 (예: <code class="inline-code">\'=D5+D6</code> → <code class="inline-code">=D5+D6</code> 그대로 표시, 계산 안 함)', items: [] },
+        { content: '행/열 추가: 표 <b>오른쪽 ＋(열)</b>, <b>아래 ＋(행)</b> 버튼. 표에 마우스를 올리면 작은 툴바에서 <b>머리글 · 1,000 · 행/열 삭제</b>', items: [] },
+        { content: '<b>1,000 버튼</b>: 켜면 <b>표 전체 숫자</b>를 <b>천단위 콤마 + 소수점 반올림</b>으로 표시(끄면 입력 그대로). 셀을 클릭하면 원래 값/수식이 보입니다.', items: [] },
       ] } },
       { type: 'table', data: { withHeadings: true, useThousands: true, content: [
         ['항목', '1월', '2월', '합계'],
@@ -49,7 +51,7 @@ const Samples = (() => {
         ['비용', '450000', '620000', '=SUM(B3:C3)'],
         ['이익', '=B2-B3', '=C2-C3', '=SUM(B4:C4)'],
       ] } },
-      { type: 'paragraph', data: { text: '위 표의 <b>합계·이익</b> 칸을 눌러 보세요. <code class="inline-code">=SUM(...)</code>, <code class="inline-code">=B2-B3</code> 수식이 보이고, 숫자는 천단위 콤마로 끊어 표시됩니다(툴바에서 끌 수 있어요).' } },
+      { type: 'paragraph', data: { text: '위 표의 <b>합계·이익</b> 칸을 눌러 보세요. <code class="inline-code">=SUM(...)</code>, <code class="inline-code">=B2-B3</code> 수식이 보이고, 이 표는 <b>1,000</b> 이 켜져 있어 숫자가 콤마로 끊겨 보입니다(툴바에서 끄면 입력값 그대로).' } },
 
       { type: 'header', data: { text: '↕️ 4. 순서 바꾸기 (드래그)', level: 2 } },
       { type: 'paragraph', data: { text: '블록 위에 마우스를 올리면 왼쪽에 손잡이 <b>⠿</b> 가 보여요. 잡고 위아래로 끌면 순서가 바뀌고 파란 선이 놓일 위치를 알려줍니다. 손잡이를 <b>한 번 클릭</b>하면 위로/아래로/삭제 메뉴가 열립니다. (모바일은 길게 눌러 드래그)' } },
