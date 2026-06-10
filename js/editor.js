@@ -527,17 +527,17 @@ const EditorManager = (() => {
   ========================================================= */
   const _TRANSFORMABLE = new Set(['paragraph', 'header', 'list', 'checklist', 'quote', 'code', 'toggle', 'callout']);
   const _CONVERT_TYPES = [
-    { type: 'paragraph', label: '텍스트' },
-    { type: 'header', level: 1, label: '제목 1' },
-    { type: 'header', level: 2, label: '제목 2' },
-    { type: 'header', level: 3, label: '제목 3' },
-    { type: 'list', style: 'unordered', label: '글머리 목록' },
-    { type: 'list', style: 'ordered', label: '번호 목록' },
-    { type: 'checklist', label: '체크리스트' },
-    { type: 'quote', label: '인용구' },
-    { type: 'code', label: '코드' },
-    { type: 'toggle', label: '토글' },
-    { type: 'callout', label: '콜아웃' },
+    { type: 'paragraph', label: '텍스트', icon: 'T', kw: 'text 텍스트 본문 paragraph' },
+    { type: 'header', level: 1, label: '제목 1', icon: 'H₁', kw: 'h1 heading title 제목 머리말' },
+    { type: 'header', level: 2, label: '제목 2', icon: 'H₂', kw: 'h2 heading title 제목 머리말' },
+    { type: 'header', level: 3, label: '제목 3', icon: 'H₃', kw: 'h3 heading title 제목 머리말' },
+    { type: 'list', style: 'unordered', label: '글머리 목록', icon: '•', kw: 'bullet list unordered 목록 글머리 점' },
+    { type: 'list', style: 'ordered', label: '번호 목록', icon: '1.', kw: 'number ordered list 번호 목록 숫자' },
+    { type: 'checklist', label: '체크리스트', icon: '☑', kw: 'checklist todo check 체크 할일 체크리스트' },
+    { type: 'quote', label: '인용구', icon: '❝', kw: 'quote 인용 인용구' },
+    { type: 'code', label: '코드', icon: '</>', kw: 'code 코드' },
+    { type: 'toggle', label: '토글', icon: '▸', kw: 'toggle 토글 접기' },
+    { type: 'callout', label: '콜아웃', icon: '💡', kw: 'callout 콜아웃 강조' },
   ];
 
   function _esc(s) { const d = document.createElement('div'); d.textContent = String(s == null ? '' : s); return d.innerHTML; }
@@ -594,9 +594,32 @@ const EditorManager = (() => {
     }
   }
 
-  // 전환 대상 블록 인덱스: 선택된 블록 우선, 없으면 마우스가 올라간 블록
+  // 네이티브 텍스트 드래그(여러 블록 가로지름) 선택 → 블록 인덱스 범위.
+  // 전환 버튼 mousedown 에서 preventDefault 하므로 window.getSelection 은 클릭 시점까지 유지된다.
+  // (Editor.js 가 mousedown 으로 .ce-block--selected 를 지워도 이 신호는 살아있어 '일괄 전환'이 확실히 동작)
+  function _selectionBlockRange(els) {
+    const s = window.getSelection && window.getSelection();
+    if (!s || s.rangeCount === 0 || s.isCollapsed) return null;
+    const blockOf = (node) => {
+      if (!node) return null;
+      const el = (node.nodeType === 1) ? node : node.parentElement;
+      return el && el.closest ? el.closest('.ce-block') : null;
+    };
+    const aEl = blockOf(s.anchorNode), fEl = blockOf(s.focusNode);
+    if (!aEl || !fEl) return null;
+    const ai = els.indexOf(aEl), fi = els.indexOf(fEl);
+    if (ai < 0 || fi < 0) return null;
+    const lo = Math.min(ai, fi), hi = Math.max(ai, fi);
+    const out = [];
+    for (let i = lo; i <= hi; i++) out.push(i);
+    return out;
+  }
+
+  // 전환 대상 블록 인덱스: ① 네이티브 텍스트 선택 범위 → ② 블록 선택(.ce-block--selected) → ③ 호버/현재
   function _convertTargetIndices() {
     const els = _blockEls();
+    const range = _selectionBlockRange(els);
+    if (range && range.length) return range;
     const sel = els.map((el, i) => el.classList.contains('ce-block--selected') ? i : -1).filter(i => i >= 0);
     if (sel.length) return sel;
     if (_hoverIndex >= 0 && _hoverIndex < els.length) return [_hoverIndex];
@@ -639,6 +662,7 @@ const EditorManager = (() => {
      Editor.js 툴바는 첫 호버 때 생기므로 onReady 즉시 + 호버 때(플래그 1회) 주입한다. */
   let _convertMenuEl = null;
   let _convertBtnInjected = false;
+  let _pendingConvertIndices = null;   // mousedown 시점(선택 살아있을 때) 캡처
   function _ensureConvertBtn() {
     const actions = document.querySelector('#editorjs .ce-toolbar__actions');
     if (!actions) return false;
@@ -648,7 +672,8 @@ const EditorManager = (() => {
     btn.setAttribute('role', 'button');
     btn.title = '전환 — 블록 양식 바꾸기 (여러 블록 선택 시 일괄)';
     btn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>';
-    btn.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); });
+    // mousedown 에서 선택 대상을 미리 캡처(이 시점엔 텍스트 선택이 살아있음). preventDefault 로 선택 유지.
+    btn.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); _pendingConvertIndices = _convertTargetIndices(); });
     btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); _openConvertMenu(btn); });
     actions.appendChild(btn);
     _convertBtnInjected = true;
@@ -678,27 +703,94 @@ const EditorManager = (() => {
 
   function _openConvertMenu(anchor) {
     _closeConvertMenu();
-    const indices = _convertTargetIndices();
+    // mousedown 에서 캡처한 대상(선택 살아있던 시점) 우선, 없으면 현재 신호로 계산
+    const indices = (_pendingConvertIndices && _pendingConvertIndices.length) ? _pendingConvertIndices.slice() : _convertTargetIndices();
+    _pendingConvertIndices = null;
+    const count = indices.length;
+
     const menu = document.createElement('div');
     menu.className = 'convert-menu';
-    const count = indices.length;
+
     const head = document.createElement('div');
     head.className = 'convert-menu__head';
-    head.textContent = count > 1 ? `${count}개 블록을 전환` : '전환할 유형 선택';
+    head.textContent = count > 1 ? `${count}개 블록을 전환` : '전환할 유형';
     menu.appendChild(head);
-    const grid = document.createElement('div');
-    grid.className = 'convert-menu__grid';
-    _CONVERT_TYPES.forEach(t => {
+
+    // 검색창 ('변환'의 검색 형태 차용)
+    const search = document.createElement('div');
+    search.className = 'convert-menu__search';
+    const sIcon = document.createElement('span');
+    sIcon.className = 'convert-menu__search-icon';
+    sIcon.setAttribute('aria-hidden', 'true');
+    sIcon.innerHTML = '<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8.5" cy="8.5" r="5.5"/><line x1="13" y1="13" x2="17.5" y2="17.5"/></svg>';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'convert-menu__search-input';
+    input.placeholder = '유형 검색';
+    input.setAttribute('aria-label', '전환할 유형 검색');
+    search.appendChild(sIcon);
+    search.appendChild(input);
+    menu.appendChild(search);
+
+    // 유형 목록 (아이콘 + 제목)
+    const list = document.createElement('div');
+    list.className = 'convert-menu__list';
+    const rows = _CONVERT_TYPES.map(t => {
       const item = document.createElement('button');
       item.type = 'button';
       item.className = 'convert-menu__item';
-      item.textContent = t.label;
+      const ic = document.createElement('span');
+      ic.className = 'convert-menu__icon'; ic.setAttribute('aria-hidden', 'true'); ic.textContent = t.icon || '';
+      const tl = document.createElement('span');
+      tl.className = 'convert-menu__title'; tl.textContent = t.label;
+      item.appendChild(ic); item.appendChild(tl);
+      item.addEventListener('mousedown', (e) => { e.preventDefault(); });   // 포커스/선택 유지
       item.addEventListener('click', (e) => { e.stopPropagation(); _closeConvertMenu(); _convert(indices, t); });
-      grid.appendChild(item);
+      list.appendChild(item);
+      return { el: item, t };
     });
-    menu.appendChild(grid);
+    menu.appendChild(list);
+
+    const empty = document.createElement('div');
+    empty.className = 'convert-menu__empty';
+    empty.textContent = '결과 없음';
+    empty.style.display = 'none';
+    menu.appendChild(empty);
+
     document.body.appendChild(menu);
     _convertMenuEl = menu;
+
+    // 필터 + 키보드 내비게이션
+    let hi = -1;
+    const visibleRows = () => rows.filter(r => r.el.style.display !== 'none');
+    const setHi = (idx) => {
+      const vis = visibleRows();
+      rows.forEach(r => r.el.classList.remove('is-active'));
+      if (idx < 0 || idx >= vis.length) { hi = -1; return; }
+      hi = idx; vis[idx].el.classList.add('is-active');
+      vis[idx].el.scrollIntoView({ block: 'nearest' });
+    };
+    const applyFilter = () => {
+      const q = input.value.trim().toLowerCase();
+      let shown = 0;
+      rows.forEach(r => {
+        const hay = (r.t.label + ' ' + (r.t.kw || '')).toLowerCase();
+        const ok = !q || hay.includes(q);
+        r.el.style.display = ok ? '' : 'none';
+        if (ok) shown++;
+      });
+      empty.style.display = shown ? 'none' : '';
+      setHi(shown ? 0 : -1);
+    };
+    input.addEventListener('input', applyFilter);
+    input.addEventListener('keydown', (e) => {
+      const vis = visibleRows();
+      if (e.key === 'ArrowDown') { e.preventDefault(); setHi(Math.min((hi < 0 ? -1 : hi) + 1, vis.length - 1)); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); setHi(Math.max((hi < 0 ? vis.length : hi) - 1, 0)); }
+      else if (e.key === 'Enter') { e.preventDefault(); const sel = (hi >= 0 ? vis[hi] : vis[0]); if (sel) { _closeConvertMenu(); _convert(indices, sel.t); } }
+      else if (e.key === 'Escape') { e.preventDefault(); _closeConvertMenu(); }
+    });
+    applyFilter();
 
     // 위치: 버튼 오른쪽, 화면 넘치면 보정
     const r = anchor.getBoundingClientRect();
@@ -712,6 +804,7 @@ const EditorManager = (() => {
     setTimeout(() => {
       document.addEventListener('click', _onConvertDocClick, true);
       document.addEventListener('keydown', _onConvertKey, true);
+      try { input.focus({ preventScroll: true }); } catch {}
     }, 0);
   }
 
