@@ -288,8 +288,6 @@ const App = (() => {
     EditorManager.destroy();
     const mobileTitleEl = document.getElementById('mobile-page-title');
     if (mobileTitleEl) mobileTitleEl.textContent = '다락방';
-    const wc = document.getElementById('word-count');
-    if (wc) wc.textContent = '';
     Sidebar.setActivePage(null);
   }
 
@@ -317,11 +315,22 @@ const App = (() => {
     document.getElementById('btn-save')?.addEventListener('click', _savePage);
     document.getElementById('btn-save-mobile')?.addEventListener('click', _savePage);
 
-    // Ctrl+S / Cmd+S
+    // 되돌리기/복원 버튼 (← / →)
+    document.getElementById('btn-undo')?.addEventListener('click', () => EditorManager.undo());
+    document.getElementById('btn-redo')?.addEventListener('click', () => EditorManager.redo());
+    // 버튼 활성/비활성 갱신
+    EditorManager.setHistoryListener(_updateHistoryButtons);
+
+    // Ctrl+S / Cmd+S, Ctrl+Z(되돌리기), Ctrl+Shift+Z / Ctrl+Y(복원)
     document.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        _savePage();
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const k = e.key.toLowerCase();
+      if (k === 's') { e.preventDefault(); _savePage(); }
+      else if (k === 'z' && !e.shiftKey) {
+        if (_editorFocused()) { e.preventDefault(); EditorManager.undo(); }
+      }
+      else if ((k === 'z' && e.shiftKey) || k === 'y') {
+        if (_editorFocused()) { e.preventDefault(); EditorManager.redo(); }
       }
     });
 
@@ -336,7 +345,7 @@ const App = (() => {
       _scheduleAutosave();
     });
 
-    // 에디터 내용 변경 → 자동 저장 예약 + (단어 수 + 본문→사이드바 즉시 동기화)
+    // 에디터 내용 변경 → 자동 저장 예약 + 본문→사이드바 즉시 동기화
     document.addEventListener('darakbang:editorChanged', _scheduleAutosave);
     document.addEventListener('darakbang:editorChanged', _onEditorChanged);
 
@@ -470,25 +479,28 @@ const App = (() => {
     // 브레드크럼
     _renderBreadcrumb(pageData.id);
 
-    // 에디터 초기화
+    // 에디터 초기화 (히스토리도 함께 초기화됨)
     EditorManager.init(pageData);
     Workspace.markClean();
-
-    // 단어수는 로드한 데이터로 즉시 계산(에디터 준비 타이밍/전환 레이스와 무관하게 정확)
-    _setWordCount(pageData.editorData);
 
     // 본문 링크 스냅샷 초기화(로드 시점) — 이후 '이번에 지운' 링크만 트리에서 제거
     _bodyLinks = _bodyLinkSet(pageData.editorData);
   }
 
-  /* 주어진 editorData 로 단어/글자 수 표시 (동기, 로드 시 사용) */
-  function _setWordCount(editorData) {
-    const el = document.getElementById('word-count');
-    if (!el) return;
-    try {
-      const text = Exporter.plainText(editorData || { blocks: [] }).replace(/\s+/g, ' ').trim();
-      el.textContent = `${text ? text.split(/\s+/).filter(Boolean).length : 0}단어 · ${text.length}자`;
-    } catch { el.textContent = ''; }
+  /* 되돌리기/복원 버튼 활성 상태 갱신 */
+  function _updateHistoryButtons() {
+    const u = document.getElementById('btn-undo');
+    const r = document.getElementById('btn-redo');
+    if (u) u.disabled = !EditorManager.canUndo();
+    if (r) r.disabled = !EditorManager.canRedo();
+  }
+
+  /* Ctrl+Z/Shift+Z 를 에디터 본문 되돌리기에 적용할지(제목/검색/모달 입력은 기본 동작 유지) */
+  function _editorFocused() {
+    if (!Workspace.getCurrentPageId()) return false;
+    const a = document.activeElement;
+    if (!a || a === document.body) return true;     // 포커스 없음(이전 되돌리기 후) → 에디터로
+    return !!document.getElementById('editorjs')?.contains(a);
   }
 
   /* =========================================================
@@ -846,13 +858,11 @@ const App = (() => {
   }
 
   /* =========================================================
-     에디터 변경 시: 단어/글자 수 + 본문→사이드바 즉시 순서 동기화
-     (한 번의 save() 결과를 공유해 중복 직렬화를 피함)
+     에디터 변경 시: 본문→사이드바 즉시 순서/삭제 동기화
   ========================================================= */
   async function _onEditorChanged() {
     const pageId = Workspace.getCurrentPageId();
-    const el = document.getElementById('word-count');
-    if (!pageId) { if (el) el.textContent = ''; return; }
+    if (!pageId) return;
     let data;
     try { data = await EditorManager.getEditorData(); } catch { return; }
     // 빠른 페이지 전환 중 늦게 도착한 콜백이 다른 페이지 데이터를 덮어쓰지 않도록 가드
@@ -865,12 +875,6 @@ const App = (() => {
 
     // 본문에서 하위문서 순서가 바뀌면 자동저장(1.5s)을 기다리지 않고 사이드바 즉시 반영
     try { if (Workspace.syncChildrenOrderLive(pageId, data)) Sidebar.render(); } catch {}
-
-    // 단어/글자 수
-    if (el) {
-      const text = Exporter.plainText(data).replace(/\s+/g, ' ').trim();
-      el.textContent = `${text ? text.split(/\s+/).filter(Boolean).length : 0}단어 · ${text.length}자`;
-    }
   }
 
   /* 본문 pageLink 의 pageId 집합 */
