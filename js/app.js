@@ -288,7 +288,16 @@ const App = (() => {
     EditorManager.destroy();
     const mobileTitleEl = document.getElementById('mobile-page-title');
     if (mobileTitleEl) mobileTitleEl.textContent = '다락방';
+    History.reset(null);                 // [v6] 되돌리기 기록 비우기(메모리 정리)
     Sidebar.setActivePage(null);
+  }
+
+  /* [v6] 되돌리기/복원 버튼 활성/비활성 갱신 (History 상태 변화 시) */
+  function _updateHistoryButtons(e) {
+    const canUndo = e?.detail?.canUndo ?? false;
+    const canRedo = e?.detail?.canRedo ?? false;
+    ['btn-undo', 'btn-undo-mobile'].forEach(id => { const b = document.getElementById(id); if (b) b.disabled = !canUndo; });
+    ['btn-redo', 'btn-redo-mobile'].forEach(id => { const b = document.getElementById(id); if (b) b.disabled = !canRedo; });
   }
 
   /* =========================================================
@@ -315,24 +324,39 @@ const App = (() => {
     document.getElementById('btn-save')?.addEventListener('click', _savePage);
     document.getElementById('btn-save-mobile')?.addEventListener('click', _savePage);
 
-    // 되돌리기/복원 버튼 (← / →)
-    document.getElementById('btn-undo')?.addEventListener('click', () => EditorManager.undo());
-    document.getElementById('btn-redo')?.addEventListener('click', () => EditorManager.redo());
-    // 버튼 활성/비활성 갱신
-    EditorManager.setHistoryListener(_updateHistoryButtons);
-
-    // Ctrl+S / Cmd+S, Ctrl+Z(되돌리기), Ctrl+Shift+Z / Ctrl+Y(복원)
+    // Ctrl+S / Cmd+S
     document.addEventListener('keydown', (e) => {
-      if (!(e.ctrlKey || e.metaKey)) return;
-      const k = e.key.toLowerCase();
-      if (k === 's') { e.preventDefault(); _savePage(); }
-      else if (k === 'z' && !e.shiftKey) {
-        if (_editorFocused()) { e.preventDefault(); EditorManager.undo(); }
-      }
-      else if ((k === 'z' && e.shiftKey) || k === 'y') {
-        if (_editorFocused()) { e.preventDefault(); EditorManager.redo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        _savePage();
       }
     });
+
+    // [v6] 되돌리기/복원 버튼(←/→, 데스크톱·모바일)
+    const bindHist = (id, fn) => document.getElementById(id)?.addEventListener('click', (e) => { e.preventDefault(); fn(); });
+    bindHist('btn-undo', () => History.undo());
+    bindHist('btn-redo', () => History.redo());
+    bindHist('btn-undo-mobile', () => History.undo());
+    bindHist('btn-redo-mobile', () => History.redo());
+    document.addEventListener('darakbang:historyChanged', _updateHistoryButtons);
+
+    // [v6] Ctrl+Z 되돌리기 / Ctrl+Shift+Z·Ctrl+Y 복원
+    //  - 제목·코드(textarea)·입력창은 브라우저 기본 실행취소를 그대로 둔다(세밀 편집 보존).
+    //  - 본문 에디터 블록(문단/목록/표 등)과 포커스 없는 상태에선 문서 단위 되돌리기.
+    document.addEventListener('keydown', (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const k = e.key.toLowerCase();
+      const isUndo = (k === 'z' && !e.shiftKey);
+      const isRedo = (k === 'z' && e.shiftKey) || (k === 'y');
+      if (!isUndo && !isRedo) return;
+      if (!Workspace.getCurrentPageId()) return;
+      const ae = document.activeElement;
+      const tag = ae && ae.tagName;
+      const nativeField = tag === 'INPUT' || tag === 'TEXTAREA' || (ae && ae.id === 'page-title-input');
+      if (nativeField) return;
+      e.preventDefault();
+      if (isUndo) History.undo(); else History.redo();
+    }, true);
 
     // 페이지 제목 입력
     const titleInput = document.getElementById('page-title-input');
@@ -345,7 +369,7 @@ const App = (() => {
       _scheduleAutosave();
     });
 
-    // 에디터 내용 변경 → 자동 저장 예약 + 본문→사이드바 즉시 동기화
+    // 에디터 내용 변경 → 자동 저장 예약 + (단어 수 + 본문→사이드바 즉시 동기화)
     document.addEventListener('darakbang:editorChanged', _scheduleAutosave);
     document.addEventListener('darakbang:editorChanged', _onEditorChanged);
 
@@ -479,28 +503,15 @@ const App = (() => {
     // 브레드크럼
     _renderBreadcrumb(pageData.id);
 
-    // 에디터 초기화 (히스토리도 함께 초기화됨)
+    // 에디터 초기화
     EditorManager.init(pageData);
     Workspace.markClean();
 
+    // [v6] 되돌리기/복원 기록 초기화 — 로드한 본문을 첫 스냅샷으로(에디터 준비와 무관하게 즉시)
+    History.reset(pageData.editorData);
+
     // 본문 링크 스냅샷 초기화(로드 시점) — 이후 '이번에 지운' 링크만 트리에서 제거
     _bodyLinks = _bodyLinkSet(pageData.editorData);
-  }
-
-  /* 되돌리기/복원 버튼 활성 상태 갱신 */
-  function _updateHistoryButtons() {
-    const u = document.getElementById('btn-undo');
-    const r = document.getElementById('btn-redo');
-    if (u) u.disabled = !EditorManager.canUndo();
-    if (r) r.disabled = !EditorManager.canRedo();
-  }
-
-  /* Ctrl+Z/Shift+Z 를 에디터 본문 되돌리기에 적용할지(제목/검색/모달 입력은 기본 동작 유지) */
-  function _editorFocused() {
-    if (!Workspace.getCurrentPageId()) return false;
-    const a = document.activeElement;
-    if (!a || a === document.body) return true;     // 포커스 없음(이전 되돌리기 후) → 에디터로
-    return !!document.getElementById('editorjs')?.contains(a);
   }
 
   /* =========================================================
@@ -858,11 +869,13 @@ const App = (() => {
   }
 
   /* =========================================================
-     에디터 변경 시: 본문→사이드바 즉시 순서/삭제 동기화
+     에디터 변경 시: 되돌리기 기록 + 본문→사이드바 즉시 순서 동기화
+     (한 번의 save() 결과를 공유해 중복 직렬화를 피함)
   ========================================================= */
-  async function _onEditorChanged() {
+  async function _onEditorChanged(e) {
     const pageId = Workspace.getCurrentPageId();
     if (!pageId) return;
+    const fromHistory = !!(e && e.detail && e.detail.fromHistory);   // [v6] 되돌리기/복원發 변경인지
     let data;
     try { data = await EditorManager.getEditorData(); } catch { return; }
     // 빠른 페이지 전환 중 늦게 도착한 콜백이 다른 페이지 데이터를 덮어쓰지 않도록 가드
@@ -870,8 +883,16 @@ const App = (() => {
     // null(미준비)/빈 데이터(블록 0개)는 무시 — 전환·파괴 레이스에서 children 을 잘못 지우지 않도록 안전장치
     if (!data || !data.blocks || data.blocks.length === 0) return;
 
-    // 본문에서 하위문서 링크를 지웠으면 사이드바(좌측 탭)에서도 제거 (요구사항 2)
-    try { await _reconcileChildrenWithBody(pageId, data); } catch {}
+    if (fromHistory) {
+      // [v6] 되돌리기/복원으로 인한 변경일 땐 하위문서 '삭제 동기화'와 '재기록'을 건너뜀
+      //      (오삭제 방지 + 복원 가지 보존). 링크 스냅샷만 갱신해 이후 편집의 오삭제를 막는다.
+      _bodyLinks = _bodyLinkSet(data);
+    } else {
+      // 본문에서 하위문서 링크를 지웠으면 사이드바(좌측 탭)에서도 제거 (요구사항 2)
+      try { await _reconcileChildrenWithBody(pageId, data); } catch {}
+      // [v6] 되돌리기/복원용 스냅샷 기록(유휴 시점 묶음 단위). 중복은 내부에서 무시.
+      try { History.record(data); } catch {}
+    }
 
     // 본문에서 하위문서 순서가 바뀌면 자동저장(1.5s)을 기다리지 않고 사이드바 즉시 반영
     try { if (Workspace.syncChildrenOrderLive(pageId, data)) Sidebar.render(); } catch {}
