@@ -553,12 +553,17 @@ button:disabled {
   transition: opacity var(--transition-fast);
 }
 
-/* 단어/글자 수 (요구사항 5) */
-.word-count {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  white-space: nowrap;
+/* 되돌리기/복원 버튼 (← / →) */
+.history-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 2px;
 }
-@media (max-width: 768px) {
-  .word-count { display: none; }
+.history-btn { width: 30px; height: 30px; }
+.history-btn .icon { width: 18px; height: 18px; }
+.history-btn:disabled {
+  opacity: 0.32;
+  cursor: default;
+  pointer-events: none;
 }

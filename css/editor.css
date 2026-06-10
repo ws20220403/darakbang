@@ -179,6 +179,62 @@ body.is-block-dragging * {
 }
 
 /* =========================================================
+   전환(Convert) 버튼 + 메뉴
+========================================================= */
+.ce-toolbar__convert-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px; height: 26px;
+  border-radius: var(--border-radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.ce-toolbar__convert-btn:hover { background: var(--bg-hover); color: var(--color-brand); }
+
+/* 콘텐츠 수에 맞춰 자동으로 늘어나는 그리드 메뉴 (스크롤 없음, 화면 넘치면만 스크롤) */
+.convert-menu {
+  position: fixed;
+  z-index: 900;
+  background: var(--bg-modal);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-xl);
+  padding: 8px;
+  max-width: 92vw;
+  max-height: 84vh;
+  overflow: auto;
+  animation: slideUp 0.12s ease;
+}
+.convert-menu__head {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  padding: 2px 6px 6px;
+  font-weight: 600;
+}
+.convert-menu__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(96px, 1fr));
+  gap: 4px;
+}
+.convert-menu__item {
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  text-align: left;
+  border-radius: var(--border-radius-md);
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.convert-menu__item:hover { background: var(--bg-hover); color: var(--color-brand); }
+@media (max-width: 600px) {
+  .convert-menu__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* =========================================================
    INLINE TOOLBAR / CONVERSION / SETTINGS
 ========================================================= */
 .ce-inline-toolbar,
