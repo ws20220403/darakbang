@@ -15,14 +15,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
   <!-- CSS -->
-  <link rel="stylesheet" href="css/reset.css?v=20260610-v6j" />
-  <link rel="stylesheet" href="css/variables.css?v=20260610-v6j" />
-  <link rel="stylesheet" href="css/layout.css?v=20260610-v6j" />
-  <link rel="stylesheet" href="css/sidebar.css?v=20260610-v6j" />
-  <link rel="stylesheet" href="css/editor.css?v=20260610-v6j" />
-  <link rel="stylesheet" href="css/blocks.css?v=20260610-v6j" />
-  <link rel="stylesheet" href="css/components.css?v=20260610-v6j" />
-  <link rel="stylesheet" href="css/optimize.css?v=20260610-v6j" />
+  <link rel="stylesheet" href="css/reset.css?v=20260610-v6a" />
+  <link rel="stylesheet" href="css/variables.css?v=20260610-v6a" />
+  <link rel="stylesheet" href="css/layout.css?v=20260610-v6a" />
+  <link rel="stylesheet" href="css/sidebar.css?v=20260610-v6a" />
+  <link rel="stylesheet" href="css/editor.css?v=20260610-v6a" />
+  <link rel="stylesheet" href="css/blocks.css?v=20260610-v6a" />
+  <link rel="stylesheet" href="css/components.css?v=20260610-v6a" />
+  <link rel="stylesheet" href="css/optimize.css?v=20260610-v6a" />
 
   <!-- Editor.js + 플러그인 (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.30.6/dist/editorjs.umd.min.js"></script>
@@ -190,9 +190,17 @@
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
         <span class="mobile-topbar-title" id="mobile-page-title">다락방</span>
-        <button id="btn-save-mobile" class="btn-save-mobile" aria-label="저장">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        </button>
+        <div class="mobile-topbar-actions">
+          <button id="btn-undo-mobile" class="history-btn" title="되돌리기" aria-label="되돌리기" disabled>
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          </button>
+          <button id="btn-redo-mobile" class="history-btn" title="복원" aria-label="복원" disabled>
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+          <button id="btn-save-mobile" class="btn-save-mobile" aria-label="저장">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          </button>
+        </div>
       </div>
 
       <!-- Welcome / Empty State -->
@@ -218,12 +226,13 @@
             <nav id="breadcrumb" class="breadcrumb" aria-label="경로"></nav>
           </div>
           <div class="page-toolbar-right">
-            <div class="history-buttons" role="group" aria-label="되돌리기/복원">
-              <button id="btn-undo" class="icon-btn history-btn" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기" disabled>
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+            <!-- 되돌리기(←) / 복원(→) — Ctrl+Z, Ctrl+Shift+Z 와 연동 (v6) -->
+            <div class="history-controls" role="group" aria-label="되돌리기/복원">
+              <button id="btn-undo" class="history-btn" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기" disabled>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
               </button>
-              <button id="btn-redo" class="icon-btn history-btn" title="복원 (Ctrl+Shift+Z)" aria-label="복원" disabled>
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
+              <button id="btn-redo" class="history-btn" title="복원 (Ctrl+Shift+Z)" aria-label="복원" disabled>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
               </button>
             </div>
             <span id="save-status" class="save-status" aria-live="polite"></span>
@@ -401,19 +410,21 @@
   <!-- =========================================================
        JS Modules (순서 중요)
   ========================================================== -->
-  <script src="js/ui.js?v=20260610-v6j"></script>
-  <script src="js/samples.js?v=20260610-v6j"></script>
-  <script src="js/auth.js?v=20260610-v6j"></script>
-  <script src="js/drive.js?v=20260610-v6j"></script>
-  <script src="js/local-store.js?v=20260610-v6j"></script>
-  <script src="js/storage.js?v=20260610-v6j"></script>
-  <script src="js/formula.js?v=20260610-v6j"></script>
-  <script src="js/export.js?v=20260610-v6j"></script>
-  <script src="js/workspace.js?v=20260610-v6j"></script>
-  <script src="js/blocks.js?v=20260610-v6j"></script>
-  <script src="js/editor.js?v=20260610-v6j"></script>
-  <script src="js/sidebar.js?v=20260610-v6j"></script>
-  <script src="js/app.js?v=20260610-v6j"></script>
+  <script src="js/ui.js?v=20260610-v6a"></script>
+  <script src="js/samples.js?v=20260610-v6a"></script>
+  <script src="js/auth.js?v=20260610-v6a"></script>
+  <script src="js/drive.js?v=20260610-v6a"></script>
+  <script src="js/local-store.js?v=20260610-v6a"></script>
+  <script src="js/storage.js?v=20260610-v6a"></script>
+  <script src="js/formula.js?v=20260610-v6a"></script>
+  <script src="js/export.js?v=20260610-v6a"></script>
+  <script src="js/workspace.js?v=20260610-v6a"></script>
+  <script src="js/blocks.js?v=20260610-v6a"></script>
+  <script src="js/editor.js?v=20260610-v6a"></script>
+  <script src="js/history.js?v=20260610-v6a"></script>
+  <script src="js/autoformat.js?v=20260610-v6a"></script>
+  <script src="js/sidebar.js?v=20260610-v6a"></script>
+  <script src="js/app.js?v=20260610-v6a"></script>
 
 </body>
 </html>
