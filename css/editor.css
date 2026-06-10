@@ -194,45 +194,123 @@ body.is-block-dragging * {
 }
 .ce-toolbar__convert-btn:hover { background: var(--bg-hover); color: var(--color-brand); }
 
-/* 콘텐츠 수에 맞춰 자동으로 늘어나는 그리드 메뉴 (스크롤 없음, 화면 넘치면만 스크롤) */
+/* '변환'에서 쓰던 형태 차용 — 검색창 + 아이콘·제목 세로 목록(Notion식 팝오버) */
 .convert-menu {
   position: fixed;
   z-index: 900;
+  width: 250px;
+  max-width: 92vw;
+  max-height: min(72vh, 460px);
+  display: flex;
+  flex-direction: column;
   background: var(--bg-modal);
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow-xl);
-  padding: 8px;
-  max-width: 92vw;
-  max-height: 84vh;
-  overflow: auto;
+  padding: 6px;
   animation: slideUp 0.12s ease;
 }
 .convert-menu__head {
   font-size: 0.72rem;
   color: var(--text-muted);
-  padding: 2px 6px 6px;
+  padding: 2px 6px 5px;
   font-weight: 600;
 }
-.convert-menu__grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(96px, 1fr));
-  gap: 4px;
+/* 검색창 — 네이티브 .cdx-search-field 형태 차용 */
+.convert-menu__search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  margin-bottom: 6px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+}
+.convert-menu__search-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+.convert-menu__search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: transparent;
+  border: 0;
+  outline: none;
+  padding: 0;
+}
+.convert-menu__search-input::placeholder { color: var(--color-placeholder); }
+.convert-menu__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
 }
 .convert-menu__item {
-  padding: 8px 10px;
-  font-size: 0.85rem;
-  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 6px;
+  border: 0;
   border-radius: var(--border-radius-md);
+  background: transparent;
   color: var(--text-primary);
+  text-align: left;
   cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.convert-menu__item:hover,
+.convert-menu__item.is-active { background: var(--bg-hover); }
+.convert-menu__icon {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+}
+.convert-menu__item:hover .convert-menu__icon,
+.convert-menu__item.is-active .convert-menu__icon {
+  background: var(--color-brand-dim);
+  color: var(--color-brand);
+  border-color: transparent;
+}
+.convert-menu__title {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
   white-space: nowrap;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.convert-menu__item:hover { background: var(--bg-hover); color: var(--color-brand); }
-@media (max-width: 600px) {
-  .convert-menu__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.convert-menu__empty {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  padding: 10px 6px;
+  text-align: center;
 }
+
+/* === 네이티브 변환 UI 제거 — '전환' 버튼으로 일원화 ===
+   · 인라인 툴바(텍스트 선택)의 'Convert to' 토글
+   · 블록 설정(⠿) 팝오버의 '변환' 항목 (data-item-name=convert-to) */
+.ce-inline-toolbar__dropdown { display: none !important; }
+.ce-popover-item[data-item-name="convert-to"] { display: none !important; }
 
 /* =========================================================
    INLINE TOOLBAR / CONVERSION / SETTINGS
