@@ -15,14 +15,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
   <!-- CSS -->
-  <link rel="stylesheet" href="css/reset.css?v=20260609-v5c" />
-  <link rel="stylesheet" href="css/variables.css?v=20260609-v5c" />
-  <link rel="stylesheet" href="css/layout.css?v=20260609-v5c" />
-  <link rel="stylesheet" href="css/sidebar.css?v=20260609-v5c" />
-  <link rel="stylesheet" href="css/editor.css?v=20260609-v5c" />
-  <link rel="stylesheet" href="css/blocks.css?v=20260609-v5c" />
-  <link rel="stylesheet" href="css/components.css?v=20260609-v5c" />
-  <link rel="stylesheet" href="css/optimize.css?v=20260609-v5c" />
+  <link rel="stylesheet" href="css/reset.css?v=20260609-v6h" />
+  <link rel="stylesheet" href="css/variables.css?v=20260609-v6h" />
+  <link rel="stylesheet" href="css/layout.css?v=20260609-v6h" />
+  <link rel="stylesheet" href="css/sidebar.css?v=20260609-v6h" />
+  <link rel="stylesheet" href="css/editor.css?v=20260609-v6h" />
+  <link rel="stylesheet" href="css/blocks.css?v=20260609-v6h" />
+  <link rel="stylesheet" href="css/components.css?v=20260609-v6h" />
+  <link rel="stylesheet" href="css/optimize.css?v=20260609-v6h" />
 
   <!-- Editor.js + 플러그인 (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.30.6/dist/editorjs.umd.min.js"></script>
@@ -218,7 +218,14 @@
             <nav id="breadcrumb" class="breadcrumb" aria-label="경로"></nav>
           </div>
           <div class="page-toolbar-right">
-            <span id="word-count" class="word-count" aria-live="polite" title="본문 단어/글자 수"></span>
+            <div class="history-buttons" role="group" aria-label="되돌리기/복원">
+              <button id="btn-undo" class="icon-btn history-btn" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기" disabled>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+              </button>
+              <button id="btn-redo" class="icon-btn history-btn" title="복원 (Ctrl+Shift+Z)" aria-label="복원" disabled>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
+              </button>
+            </div>
             <span id="save-status" class="save-status" aria-live="polite"></span>
             <span id="unsaved-indicator" class="unsaved-indicator hidden" title="저장되지 않은 변경사항" aria-label="저장되지 않은 변경사항">●</span>
             <button id="btn-save" class="btn-save" aria-label="저장 (Ctrl+S)">
@@ -394,19 +401,19 @@
   <!-- =========================================================
        JS Modules (순서 중요)
   ========================================================== -->
-  <script src="js/ui.js?v=20260609-v5c"></script>
-  <script src="js/samples.js?v=20260609-v5c"></script>
-  <script src="js/auth.js?v=20260609-v5c"></script>
-  <script src="js/drive.js?v=20260609-v5c"></script>
-  <script src="js/local-store.js?v=20260609-v5c"></script>
-  <script src="js/storage.js?v=20260609-v5c"></script>
-  <script src="js/formula.js?v=20260609-v5c"></script>
-  <script src="js/export.js?v=20260609-v5c"></script>
-  <script src="js/workspace.js?v=20260609-v5c"></script>
-  <script src="js/blocks.js?v=20260609-v5c"></script>
-  <script src="js/editor.js?v=20260609-v5c"></script>
-  <script src="js/sidebar.js?v=20260609-v5c"></script>
-  <script src="js/app.js?v=20260609-v5c"></script>
+  <script src="js/ui.js?v=20260609-v6h"></script>
+  <script src="js/samples.js?v=20260609-v6h"></script>
+  <script src="js/auth.js?v=20260609-v6h"></script>
+  <script src="js/drive.js?v=20260609-v6h"></script>
+  <script src="js/local-store.js?v=20260609-v6h"></script>
+  <script src="js/storage.js?v=20260609-v6h"></script>
+  <script src="js/formula.js?v=20260609-v6h"></script>
+  <script src="js/export.js?v=20260609-v6h"></script>
+  <script src="js/workspace.js?v=20260609-v6h"></script>
+  <script src="js/blocks.js?v=20260609-v6h"></script>
+  <script src="js/editor.js?v=20260609-v6h"></script>
+  <script src="js/sidebar.js?v=20260609-v6h"></script>
+  <script src="js/app.js?v=20260609-v6h"></script>
 
 </body>
 </html>
