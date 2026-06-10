@@ -394,6 +394,56 @@ body {
 }
 
 /* =========================================================
+   되돌리기(←) / 복원(→) 버튼  [v6]
+========================================================= */
+.history-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: var(--spacing-xs);
+}
+
+.history-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--border-radius-sm);
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.history-btn:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.history-btn:active:not(:disabled) {
+  background-color: var(--bg-active);
+}
+
+.history-btn:disabled {
+  color: var(--color-placeholder);
+  opacity: 0.55;
+  cursor: default;
+}
+
+.history-btn .icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* 모바일 상단바 우측 버튼 묶음(되돌리기·복원·저장) */
+.mobile-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* =========================================================
    PAGE CONTENT
 ========================================================= */
 .page-content {

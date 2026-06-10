@@ -552,18 +552,3 @@ button:disabled {
   color: var(--text-muted);
   transition: opacity var(--transition-fast);
 }
-
-/* 되돌리기/복원 버튼 (← / →) */
-.history-buttons {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  margin-right: 2px;
-}
-.history-btn { width: 30px; height: 30px; }
-.history-btn .icon { width: 18px; height: 18px; }
-.history-btn:disabled {
-  opacity: 0.32;
-  cursor: default;
-  pointer-events: none;
-}
