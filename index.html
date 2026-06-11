@@ -15,14 +15,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
   <!-- CSS -->
-  <link rel="stylesheet" href="css/reset.css?v=20260610-v6a" />
-  <link rel="stylesheet" href="css/variables.css?v=20260610-v6a" />
-  <link rel="stylesheet" href="css/layout.css?v=20260610-v6a" />
-  <link rel="stylesheet" href="css/sidebar.css?v=20260610-v6a" />
-  <link rel="stylesheet" href="css/editor.css?v=20260610-v6a" />
-  <link rel="stylesheet" href="css/blocks.css?v=20260610-v6a" />
-  <link rel="stylesheet" href="css/components.css?v=20260610-v6a" />
-  <link rel="stylesheet" href="css/optimize.css?v=20260610-v6a" />
+  <link rel="stylesheet" href="css/reset.css?v=20260611-v7d" />
+  <link rel="stylesheet" href="css/variables.css?v=20260611-v7d" />
+  <link rel="stylesheet" href="css/layout.css?v=20260611-v7d" />
+  <link rel="stylesheet" href="css/sidebar.css?v=20260611-v7d" />
+  <link rel="stylesheet" href="css/editor.css?v=20260611-v7d" />
+  <link rel="stylesheet" href="css/blocks.css?v=20260611-v7d" />
+  <link rel="stylesheet" href="css/components.css?v=20260611-v7d" />
+  <link rel="stylesheet" href="css/optimize.css?v=20260611-v7d" />
 
   <!-- Editor.js + 플러그인 (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.30.6/dist/editorjs.umd.min.js"></script>
@@ -226,6 +226,10 @@
             <nav id="breadcrumb" class="breadcrumb" aria-label="경로"></nav>
           </div>
           <div class="page-toolbar-right">
+            <!-- 단축키 · 편의기능 안내 (v7) -->
+            <button id="btn-shortcuts" class="history-btn btn-shortcuts" title="단축키 · 편의기능 안내" aria-label="단축키 안내" aria-haspopup="dialog">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="10" x2="6" y2="10"/><line x1="10" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="14" y2="10"/><line x1="18" y1="10" x2="18" y2="10"/><line x1="6" y1="14" x2="6" y2="14"/><line x1="18" y1="14" x2="18" y2="14"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+            </button>
             <!-- 되돌리기(←) / 복원(→) — Ctrl+Z, Ctrl+Shift+Z 와 연동 (v6) -->
             <div class="history-controls" role="group" aria-label="되돌리기/복원">
               <button id="btn-undo" class="history-btn" title="되돌리기 (Ctrl+Z)" aria-label="되돌리기" disabled>
@@ -362,6 +366,19 @@
     </div>
   </div>
 
+  <!-- 단축키 · 편의기능 안내 Modal (v7) — 내용은 js/shortcuts.js 가 채움 -->
+  <div id="modal-shortcuts" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-shortcuts-title">
+    <div class="modal modal-lg">
+      <div class="modal-lg__header">
+        <h3 id="modal-shortcuts-title" class="modal-title">⌨️ 단축키 · 편의기능</h3>
+        <button id="modal-shortcuts-close" class="icon-btn modal-close" title="닫기" aria-label="닫기">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div id="modal-shortcuts-body" class="modal-lg__body"></div>
+    </div>
+  </div>
+
   <!-- =========================================================
        CONTEXT MENU
   ========================================================== -->
@@ -410,21 +427,22 @@
   <!-- =========================================================
        JS Modules (순서 중요)
   ========================================================== -->
-  <script src="js/ui.js?v=20260610-v6a"></script>
-  <script src="js/samples.js?v=20260610-v6a"></script>
-  <script src="js/auth.js?v=20260610-v6a"></script>
-  <script src="js/drive.js?v=20260610-v6a"></script>
-  <script src="js/local-store.js?v=20260610-v6a"></script>
-  <script src="js/storage.js?v=20260610-v6a"></script>
-  <script src="js/formula.js?v=20260610-v6a"></script>
-  <script src="js/export.js?v=20260610-v6a"></script>
-  <script src="js/workspace.js?v=20260610-v6a"></script>
-  <script src="js/blocks.js?v=20260610-v6a"></script>
-  <script src="js/editor.js?v=20260610-v6a"></script>
-  <script src="js/history.js?v=20260610-v6a"></script>
-  <script src="js/autoformat.js?v=20260610-v6a"></script>
-  <script src="js/sidebar.js?v=20260610-v6a"></script>
-  <script src="js/app.js?v=20260610-v6a"></script>
+  <script src="js/ui.js?v=20260611-v7d"></script>
+  <script src="js/samples.js?v=20260611-v7d"></script>
+  <script src="js/auth.js?v=20260611-v7d"></script>
+  <script src="js/drive.js?v=20260611-v7d"></script>
+  <script src="js/local-store.js?v=20260611-v7d"></script>
+  <script src="js/storage.js?v=20260611-v7d"></script>
+  <script src="js/formula.js?v=20260611-v7d"></script>
+  <script src="js/export.js?v=20260611-v7d"></script>
+  <script src="js/workspace.js?v=20260611-v7d"></script>
+  <script src="js/blocks.js?v=20260611-v7d"></script>
+  <script src="js/editor.js?v=20260611-v7d"></script>
+  <script src="js/history.js?v=20260611-v7d"></script>
+  <script src="js/autoformat.js?v=20260611-v7d"></script>
+  <script src="js/shortcuts.js?v=20260611-v7d"></script>
+  <script src="js/sidebar.js?v=20260611-v7d"></script>
+  <script src="js/app.js?v=20260611-v7d"></script>
 
 </body>
 </html>
