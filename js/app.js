@@ -320,6 +320,11 @@ const App = (() => {
     // 테마 토글
     document.getElementById('btn-theme-toggle')?.addEventListener('click', UI.toggleTheme);
 
+    // [v7] 단축키 · 편의기능 안내
+    document.getElementById('btn-shortcuts')?.addEventListener('click', () => {
+      if (typeof Shortcuts !== 'undefined') Shortcuts.open();
+    });
+
     // 저장 버튼
     document.getElementById('btn-save')?.addEventListener('click', _savePage);
     document.getElementById('btn-save-mobile')?.addEventListener('click', _savePage);

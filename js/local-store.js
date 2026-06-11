@@ -33,7 +33,7 @@ const LocalStore = (() => {
   }
 
   /* ---------- 초기화 + 샘플 시드 ---------- */
-  const SEED_VERSION = '8';   // 샘플(사용법 등) 내용이 바뀌면 올림 → 데모 데이터 갱신 (v6: 자동변환·되돌리기 안내 추가)
+  const SEED_VERSION = '9';   // 샘플(사용법 등) 내용이 바뀌면 올림 → 데모 데이터 갱신 (v7: 사용법 전면 개편·변환/단축키 안내)
   async function initFolderStructure() {
     // 데모는 체험용 샘플 데이터이므로, 버전이 바뀌면 새 샘플로 갱신한다.
     if (localStorage.getItem(K.seeded) !== SEED_VERSION) {

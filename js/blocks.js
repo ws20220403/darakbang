@@ -92,6 +92,16 @@ class ToggleTool {
     const inline = { b: true, strong: true, i: true, em: true, u: true, a: { href: true, target: true, rel: true }, code: true, mark: true, br: true };
     return { title: inline, content: inline };
   }
+
+  /* '변환' 메뉴 지원 (v7) — 다른 블록 ↔ 토글 상호 변환.
+     export: 토글 → 다른 블록(제목+내용을 줄바꿈으로 합쳐 텍스트로)
+     import: 다른 블록 → 토글(텍스트를 토글 제목으로, 펼친 상태로 생성) */
+  static get conversionConfig() {
+    return {
+      export: (data) => [data?.title, data?.content].filter(t => t && String(t).trim()).join('<br>'),
+      import: (str) => ({ title: str || '', content: '', isOpen: true }),
+    };
+  }
 }
 
 /* =========================================================
@@ -976,4 +986,36 @@ class TableTool {
   }
 
   static get sanitize() { return { withHeadings: false, content: false, useThousands: false }; }
+}
+
+/* =========================================================
+   CODE (코드) — CDN @editorjs/code 에 '변환' 지원만 덧붙인 래퍼 (v7)
+   · 렌더/저장/붙여넣기 등 모든 기능은 원본 CodeTool 을 그대로 상속.
+   · conversionConfig 만 더해 '변환' 메뉴에서 코드 ↔ 텍스트·제목·목록·인용구·토글 상호 변환.
+========================================================= */
+let DarakCodeTool;
+if (typeof CodeTool !== 'undefined') {
+  // CodeTool(CDN) 이 있을 때만 정의 → CDN 실패 시에도 이 스크립트가 깨지지 않음
+  DarakCodeTool = class extends CodeTool {
+    static get conversionConfig() {
+      return {
+        // 코드 → 다른 블록: 특수문자는 escape, 줄바꿈은 <br> 로 보존해 텍스트로
+        export: (data) => DarakCodeTool._escape(data && data.code != null ? data.code : '').replace(/\n/g, '<br>'),
+        // 다른 블록 → 코드: HTML 을 평문으로 풀어 코드로
+        import: (str) => ({ code: DarakCodeTool._htmlToPlain(str) }),
+      };
+    }
+    static _escape(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    // 변환 원문(HTML)에서 순수 텍스트만 추출. DOMParser 로 만든 문서는 비활성(inert)이라
+    // 스크립트 실행·이미지 로딩(onerror 등)이 일어나지 않아 innerHTML 보다 안전하다.
+    static _htmlToPlain(html) {
+      const prepped = String(html == null ? '' : html)
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/(p|div|li|h[1-6])>/gi, '\n');
+      const doc = new DOMParser().parseFromString(prepped, 'text/html');
+      return (doc.body.textContent || '').replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n').replace(/\s+$/, '');
+    }
+  };
 }

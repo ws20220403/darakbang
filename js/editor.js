@@ -95,7 +95,8 @@ const EditorManager = (() => {
         inlineToolbar: ['bold', 'italic', 'inlineCode', 'link'],
       },
       code: {
-        class: CodeTool,
+        // [v7] '변환' 지원을 더한 래퍼(blocks.js). 미정의 시 원본 CodeTool 로 안전 폴백.
+        class: (typeof DarakCodeTool !== 'undefined' ? DarakCodeTool : CodeTool),
         config: { placeholder: '코드를 입력하세요...' },
       },
       // [v3] 표 + 계산표 통합 (TableTool, blocks.js) — 기존 @editorjs/table 대체
