@@ -206,6 +206,25 @@ body.is-block-dragging * {
   background: var(--color-brand-dim);
 }
 
+/* ---- '변환' 목록 확장 (v7) ----
+   변환 가능한 블록이 늘어(텍스트·제목·목록·체크리스트·인용구 + 코드·토글) 목록이 길어져도
+   잘리거나 좁게 스크롤되지 않도록, 변환(중첩) 팝오버·변환 툴바를 넉넉히 펼친다.
+   '추가(+ / )' 그리드(.ce-toolbox)는 위에서 따로 다루므로 영향 없음. */
+.ce-popover--nested .ce-popover__items,
+.ce-conversion-toolbar__tools {
+  max-height: min(74vh, 460px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.ce-popover--nested .ce-popover__container {
+  max-height: 82vh;
+}
+/* 변환 목록 항목이 아이콘+이름 한 줄로 보이도록 최소 폭 확보 */
+.ce-popover--nested .ce-popover__container,
+.ce-conversion-toolbar {
+  min-width: 220px;
+}
+
 /* =========================================================
    드롭 인디케이터 / 드래그 고스트 (커스텀)
 ========================================================= */
