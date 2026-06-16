@@ -56,15 +56,26 @@ class ToggleTool {
     inner.contentEditable = this.readOnly ? 'false' : 'true';
     inner.innerHTML = this.data.content || '';
     if (!this.data.content) inner.setAttribute('data-placeholder', '내용을 입력하세요...');
-    inner.addEventListener('input', () => Workspace.markDirty());
+    // [v8] 토글 내부에서도 줄머리 자동변환('- '/'* ' → '• ') — 목록식 구분 (autoformat 과 같은 방식)
+    inner.addEventListener('input', (e) => { Workspace.markDirty(); if (!this.readOnly && !(e && e.isComposing)) ToggleTool._innerAutoList(inner); });
     content.appendChild(inner);
 
+    // [v8] 토글 제목 Enter → 아래에 '새 토글' 생성(목록식). 빈 제목이면 문단으로 풀어 종료.
     title.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (!this._isOpen) { this._isOpen = true; wrapper.classList.add('is-open'); }
-        inner.focus();
-      }
+      if (e.key !== 'Enter') return;
+      e.stopPropagation();                       // Editor.js 가 토글 밖/위에 블록 만드는 것 차단(요구사항 3)
+      if (e.isComposing || e.shiftKey) return;   // 한글 조합 중 / Shift+Enter 는 기본 동작
+      e.preventDefault();
+      this._enterFromTitle(title);
+    });
+
+    // [v8] 토글 내용 Enter → 토글 '안'에서 줄바꿈(밖으로 안 나감) + 목록 자동 이어가기(요구사항 4)
+    inner.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.stopPropagation();                       // 토글 밖으로 탈출 방지
+      if (e.isComposing || e.shiftKey) return;
+      e.preventDefault();
+      ToggleTool._innerEnter(inner);
     });
 
     arrow.addEventListener('click', (e) => {
@@ -86,6 +97,80 @@ class ToggleTool {
       content: blockContent.querySelector('.toggle-block__inner')?.innerHTML || '',
       isOpen:  this._isOpen,
     };
+  }
+
+  /* [v8] 제목에서 Enter — 아래에 새 토글(목록식). 빈 제목이면 같은 자리에서 문단으로 풀어 종료.
+     (이 앱의 커스텀 블록 관례대로 EditorManager.instance 전역 + DOM 위치로 인덱스 산출) */
+  _enterFromTitle(title) {
+    const ed = (typeof EditorManager !== 'undefined') ? EditorManager.instance : null;
+    if (!ed || !ed.blocks) return;
+    const txt = (title.textContent || '').trim();
+    try {
+      const blockEl = title.closest('.ce-block');
+      const all = Array.from(document.querySelectorAll('#editorjs .codex-editor__redactor > .ce-block'));
+      let idx = all.indexOf(blockEl);
+      if (idx < 0) idx = ed.blocks.getCurrentBlockIndex();
+      if (idx == null || idx < 0) return;
+      if (txt === '') {
+        ed.blocks.insert('paragraph', {}, {}, idx, true, true);                        // 빈 토글 → 문단으로 교체(종료)
+      } else {
+        ed.blocks.insert('toggle', { title: '', content: '', isOpen: true }, {}, idx + 1, true);  // 아래 새 토글
+      }
+      Workspace.markDirty();
+    } catch (err) { console.warn('토글 제목 Enter 처리 실패:', err); }
+  }
+
+  /* [v8] 내용에서 Enter — 토글 안에서 줄바꿈. 글머리(• / 1.) 줄이면 다음 글머리를 자동으로 이어준다. */
+  static _innerEnter(inner) {
+    const sel = window.getSelection();
+    const node = sel && sel.anchorNode;
+    const offset = sel ? sel.anchorOffset : 0;
+    const lineBefore = (node && node.nodeType === 3) ? (node.nodeValue || '').slice(0, offset) : '';
+    const mU = lineBefore.match(/^•\s(.*)$/);
+    const mO = lineBefore.match(/^(\d+)\.\s(.*)$/);
+    if (mU || mO) {
+      const rest = mU ? mU[1] : mO[2];
+      if (rest.trim() === '') {
+        // 빈 글머리에서 Enter → 접두어를 지워 목록 종료(평문 줄로)
+        const prefixLen = mU ? 2 : (mO[1].length + 2);
+        if (node && node.nodeType === 3) {
+          const v = node.nodeValue || '';
+          node.nodeValue = v.slice(0, offset - prefixLen) + v.slice(offset);
+          try {
+            const r = document.createRange();
+            r.setStart(node, Math.max(0, offset - prefixLen)); r.collapse(true);
+            sel.removeAllRanges(); sel.addRange(r);
+          } catch {}
+        }
+        Workspace.markDirty();
+        return;
+      }
+      document.execCommand('insertLineBreak');
+      document.execCommand('insertText', false, mU ? '• ' : (parseInt(mO[1], 10) + 1) + '. ');
+      Workspace.markDirty();
+      return;
+    }
+    document.execCommand('insertLineBreak');
+  }
+
+  /* [v8] 내용에서 줄 시작에 '- '/'* ' 를 입력하면 '• ' 로 자동 변환(줄머리 자동변환 방식) */
+  static _innerAutoList(inner) {
+    const sel = window.getSelection();
+    if (!sel || !sel.isCollapsed || !sel.rangeCount) return;
+    const node = sel.anchorNode;
+    if (!node || node.nodeType !== 3) return;
+    if (inner && node.parentElement && !inner.contains(node)) return;   // 토글 내용 안에서만
+    const offset = sel.anchorOffset;
+    const v = node.nodeValue || '';
+    if (v.slice(0, offset) === '- ' || v.slice(0, offset) === '* ') {
+      node.nodeValue = '• ' + v.slice(offset);
+      try {
+        const r = document.createRange();
+        r.setStart(node, 2); r.collapse(true);
+        sel.removeAllRanges(); sel.addRange(r);
+      } catch {}
+      Workspace.markDirty();
+    }
   }
 
   static get sanitize() {
@@ -483,6 +568,9 @@ class TableOfContentsTool {
     wrapper.className = 'toc-block';
     this._wrapper = wrapper;
     this._build();
+    // [v8] 첫 렌더 때 형제 헤더가 아직 안 만들어졌을 수 있어, 로드 직후 한 번 더 채운다(이미 채워졌으면 sig 가드로 무시).
+    setTimeout(() => this._build(), 50);
+    setTimeout(() => this._build(), 350);
     // 에디터 내용 변경 시 자동 갱신 (페이지 전환 시 리스너 정리는 editor.destroy에서)
     document.addEventListener('darakbang:editorChanged', this._onChange);
     return wrapper;
@@ -512,6 +600,10 @@ class TableOfContentsTool {
     const w = this._wrapper;
     if (!w) return;
     const items = this._headers();
+    // [v8] 제목 목록이 그대로면 다시 그리지 않음 — 본문 입력 중 불필요한 DOM 재생성/리플로우(깜빡임) 방지
+    const sig = items.map(it => it.level + ':' + it.index + ':' + it.text).join('|');
+    if (sig === this._lastSig && w.childElementCount > 0) return;
+    this._lastSig = sig;
     if (!items.length) {
       w.innerHTML = '<div class="toc-block__empty">제목(헤더) 블록을 추가하면 목차가 자동으로 만들어집니다. <button class="toc-block__refresh" type="button">새로고침</button></div>';
     } else {

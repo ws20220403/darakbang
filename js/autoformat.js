@@ -10,7 +10,7 @@
  *      "# "·"## "·"### "  → 제목 1·2·3
  *      "- "·"* "          → 글머리 목록
  *      "1. "              → 번호 목록
- *      "> "               → 인용구
+ *      "> "               → 토글            [v8] 인용구 → 토글로 변경
  *      "```"              → 코드
  *      "[]"·"[ ]"         → 체크리스트(요구사항)
  *
@@ -44,7 +44,7 @@ const AutoFormat = (() => {
     { re: /^###\s$/,     type: 'header',    data: { text: '', level: 3 } },
     { re: /^[-*]\s$/,    type: 'list',      data: { style: 'unordered', items: [{ content: '', items: [] }] } },
     { re: /^1\.\s$/,     type: 'list',      data: { style: 'ordered',   items: [{ content: '', items: [] }] } },
-    { re: /^>\s$/,       type: 'quote',     data: { text: '', caption: '', alignment: 'left' } },
+    { re: /^>\s$/,       type: 'toggle',    data: { title: '', content: '', isOpen: true } },   // [v8] '>' → 토글(기존 인용구에서 변경)
     { re: /^```$/,       type: 'code',      data: { code: '' } },
     { re: /^\[\]$/,      type: 'checklist', data: { items: [{ text: '', checked: false }] } },
     { re: /^\[\s\]$/,    type: 'checklist', data: { items: [{ text: '', checked: false }] } },

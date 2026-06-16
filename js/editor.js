@@ -47,9 +47,11 @@ const EditorManager = (() => {
       onChange: () => {
         Workspace.markDirty();
         clearTimeout(_changeDebounce);
+        // [v8] 연동(목차·사이드바·되돌리기 스냅샷) 반영을 더 빠르게: 400 → 250ms.
+        //      입력이 멈춘 직후에만 발화하므로 연속 입력 중엔 부하 없음(틱당 ~4ms).
         _changeDebounce = setTimeout(() => {
           document.dispatchEvent(new CustomEvent('darakbang:editorChanged'));
-        }, 400);
+        }, 250);
       },
       onReady: () => {
         _setupDrag();

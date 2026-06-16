@@ -685,8 +685,12 @@ const App = (() => {
         if (!options.silent) UI.toast('저장됐습니다.', 'success');
         const t = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
         _setSaveStatus(`저장됨 · ${t}`);
-        Sidebar.render();
-        _renderBreadcrumb(pageId);
+        // [v8] 조용한 자동저장에선 사이드바/브레드크럼 전체 재렌더 생략 — 제목은 입력 시 즉시 동기화되고,
+        //      구조 변경(하위문서 추가/삭제/순서)은 각자 경로에서 이미 렌더하므로 입력 중 불필요한 부하만 줄임.
+        if (!options.silent) {
+          Sidebar.render();
+          _renderBreadcrumb(pageId);
+        }
         const mobileTitleEl = document.getElementById('mobile-page-title');
         if (mobileTitleEl) mobileTitleEl.textContent = title;
       }

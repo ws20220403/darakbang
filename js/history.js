@@ -89,7 +89,12 @@ const History = (() => {
     _applying = true;
     try {
       if (ed.isReady) { try { await ed.isReady; } catch {} }
-      await ed.blocks.render({ blocks: _clone(entry.blocks) });
+      // [v8] Editor.js 의 blocks.render 프로미스가 토글/콜아웃이 있으면 resolve 되지 않는 이슈가 있어
+      //      (DOM 은 즉시 그려짐) 타임아웃과 경쟁시켜 되돌리기/복원이 영영 멈추지 않게 한다.
+      await Promise.race([
+        Promise.resolve(ed.blocks.render({ blocks: _clone(entry.blocks) })),
+        new Promise(r => setTimeout(r, 400)),
+      ]);
       // 바뀐 블록 근처로 커서 이동(편집 흐름 유지)
       try {
         const target = entry.blocks;

@@ -59,7 +59,7 @@ const Samples = (() => {
       { type: 'list', data: { style: 'unordered', items: [
         { content: '<code class="inline-code">#</code> · <code class="inline-code">##</code> · <code class="inline-code">###</code> + 칸(스페이스) → <b>제목</b> 1·2·3', items: [] },
         { content: '<code class="inline-code">-</code> 또는 <code class="inline-code">*</code> + 칸 → <b>글머리 목록</b>, <code class="inline-code">1.</code> + 칸 → <b>번호 목록</b>', items: [] },
-        { content: '<code class="inline-code">&gt;</code> + 칸 → <b>인용구</b>, <code class="inline-code">```</code> → <b>코드 블록</b>, <code class="inline-code">[]</code> 또는 <code class="inline-code">[ ]</code> → <b>체크리스트</b>', items: [] },
+        { content: '<code class="inline-code">&gt;</code> + 칸 → <b>토글</b>, <code class="inline-code">```</code> → <b>코드 블록</b>, <code class="inline-code">[]</code> 또는 <code class="inline-code">[ ]</code> → <b>체크리스트</b>', items: [] },
       ] } },
       { type: 'callout', data: { icon: '🛡️', color: 'yellow', text: '<b>예외</b> — 코드 블록 안과 한글 조합 중에는 자동 변환이 작동하지 않아요(코드의 <code class="inline-code">-></code>나 조합 중인 한글이 깨지지 않도록).' } },
 
@@ -73,7 +73,7 @@ const Samples = (() => {
         ['코드', '여러 줄 코드(들여쓰기·기호 그대로 보존)'],
         ['표', '행/열 표 + 엑셀식 함수(아래 7번)'],
         ['인용구 · 구분선', '인용 문단, 가로 구분선'],
-        ['토글', '제목을 누르면 접고 펴지는 블록(긴 내용 숨기기)'],
+        ['토글', '접고 펴는 블록. 제목 Enter→아래 새 토글, 내용 Enter→안에서 줄바꿈, 내용에 “- ”·“1. ” 글머리'],
         ['콜아웃', '강조 박스(아이콘 + 7가지 색)'],
         ['이미지 · 파일', '그림 업로드, PDF·Word·Excel·hwp·PPT·zip 첨부/다운로드'],
         ['북마크', '링크를 카드로(파비콘 + 제목)'],
@@ -89,7 +89,7 @@ const Samples = (() => {
         { content: '여러 블록을 함께 선택해 한 번에 바꿀 수도 있어요.', items: [] },
       ] } },
       { type: 'callout', data: { icon: '🔁', color: 'indigo', text: '<b>변환 가능한 형식</b> — 텍스트 · 제목 · 목록 · 체크리스트 · 인용구 · <b>코드</b> · <b>토글</b>. (코드·토글도 서로 바꿀 수 있습니다.)' } },
-      { type: 'toggle', data: { isOpen: false, title: '예시: 이 토글을 펼쳐 보세요', content: '토글은 제목 줄을 누르면 이렇게 내용이 펼쳐지고 접힙니다. 긴 설명이나 참고자료를 숨겨둘 때 좋아요.<br>이 토글을 선택하고 <b>변환 → 텍스트</b>를 고르면 일반 문단으로 바뀝니다. 반대로 문단을 <b>변환 → 토글</b>로 바꾸면 제목이 토글 제목이 됩니다.' } },
+      { type: 'toggle', data: { isOpen: true, title: '예시: 토글 사용법 (제목 줄을 눌러 접었다 펴기)', content: '긴 설명이나 참고자료를 숨겨둘 때 좋아요. 빈 줄에서 <b>&gt;</b> + 칸을 입력해도 토글이 만들어집니다.<br>• <b>제목에서 Enter</b> → 바로 아래에 <b>새 토글</b>이 생깁니다(빈 제목이면 일반 문단으로 빠져나가요).<br>• <b>내용에서 Enter</b> → 토글 밖으로 나가지 않고 <b>여기 안에서 줄바꿈</b>됩니다.<br>• 내용 줄 맨 앞에 “- ”/“* ” → <b>•</b> 글머리, “1. ” → 번호로 이어집니다(빈 글머리에서 Enter면 해제).<br>• 이 토글을 선택해 <b>변환 → 텍스트</b>로 바꾸면 일반 문단이 됩니다.' } },
 
       /* 7. 표와 함수 */
       { type: 'header', data: { text: '🧮 7. 표와 함수', level: 2 } },
