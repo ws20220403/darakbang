@@ -243,6 +243,11 @@ const Drive = (() => {
 
   async function writeWorkspace(data) {
     const folderId = _cache.rootFolderId;
+    // [v9 속도] 파일 ID를 이미 알면 findFile 없이 바로 덮어쓰기(PATCH)
+    if (_cache.workspaceFileId) {
+      await updateJsonFile(_cache.workspaceFileId, data);
+      return { id: _cache.workspaceFileId, name: 'workspace.json' };
+    }
     const res = await writeJsonFile('workspace.json', data, folderId);
     if (res && res.id) _cache.workspaceFileId = res.id;
     return res;
@@ -267,6 +272,11 @@ const Drive = (() => {
 
   async function writeSettings(data) {
     const folderId = _cache.rootFolderId;
+    // [v9 속도] 파일 ID를 이미 알면 findFile 없이 바로 덮어쓰기(PATCH)
+    if (_cache.settingsFileId) {
+      await updateJsonFile(_cache.settingsFileId, data);
+      return { id: _cache.settingsFileId, name: 'settings.json' };
+    }
     const res = await writeJsonFile('settings.json', data, folderId);
     if (res && res.id) _cache.settingsFileId = res.id;
     return res;
@@ -292,8 +302,21 @@ const Drive = (() => {
     return null;
   }
 
-  async function writePage(pageId, data) {
+  async function writePage(pageId, data, opts = {}) {
     const folderId = _cache.pagesFolderId;
+    // [v9 속도] ① 파일 ID를 이미 알면 findFile 없이 바로 덮어쓰기(매 저장 가속 — 요구사항 2)
+    if (_pageFileIds[pageId]) {
+      await updateJsonFile(_pageFileIds[pageId], data);
+      return { id: _pageFileIds[pageId], name: `${pageId}.json` };
+    }
+    // [v9 속도] ② '새 페이지' 확정이면 검색 없이 바로 생성(요구사항 1).
+    //   pageId 는 방금 만든 UUID 라 드라이브에 존재할 수 없어 중복 위험이 없음.
+    if (opts.create) {
+      const res = await createJsonFile(`${pageId}.json`, data, folderId);
+      if (res && res.id) _pageFileIds[pageId] = res.id;
+      return res;
+    }
+    // ③ 폴백: 기존 경로(검색 후 생성/갱신) — ID 미상이면서 새 페이지도 아닌 경우
     const res = await writeJsonFile(`${pageId}.json`, data, folderId);
     if (res && res.id) _pageFileIds[pageId] = res.id;
     return res;

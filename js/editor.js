@@ -56,6 +56,7 @@ const EditorManager = (() => {
       onReady: () => {
         _setupDrag();
         _setupCodeAutosize();
+        _setupBackspaceGuard();   // [v9] 빈/특수 블록 백스페이스 처리(요구사항 3)
         if (typeof AutoFormat !== 'undefined') AutoFormat.attach(_editor);   // [v6] 입력 자동변환
       },
     });
@@ -204,9 +205,134 @@ const EditorManager = (() => {
       holder.removeEventListener('pointermove', _onHoverMove);
       holder.removeEventListener('pointerdown', _onHandleDown, true);
       holder.removeEventListener('input', _onCodeInput, true);
+      holder.removeEventListener('keydown', _onBackspaceCapture, true);   // [v9]
     }
     if (typeof AutoFormat !== 'undefined') AutoFormat.detach();   // [v6] 입력 자동변환 정리
     _cancelDrag();
+  }
+
+  /* =========================================================
+     [v9] 특수/빈 블록에서의 백스페이스 처리 (요구사항 3)
+     - 토글·목록·체크리스트·콜아웃·인용구의 '첫 줄 맨 앞'에서 Backspace 를 누르면,
+       Editor.js 기본 동작(윗블록으로 탈출/병합)으로 윗줄이 지워지는 문제를 막고,
+       그 줄을 '일반 문단으로 풀기'(서식 제거, 글자 유지)로 바꾼다. 윗줄은 절대 건드리지 않는다.
+       · 빈 줄  → 빈 문단으로(=추가기능 해제). 한 번 더 누르면 그때 표준 병합.
+       · 글자 有 → 글자를 유지한 문단으로.
+       · 목록/체크리스트가 여러 줄이면 첫 줄만 문단으로 빼고 나머지는 목록으로 유지(분할).
+     - 줄 중간/둘째 줄 이후의 Backspace 는 가로채지 않음(도구 기본 동작 유지).
+  ========================================================= */
+  const _SPECIAL_BACKSPACE = new Set(['toggle', 'list', 'checklist', 'callout', 'quote']);
+
+  function _setupBackspaceGuard() {
+    const holder = document.getElementById('editorjs');
+    if (!holder) return;
+    holder.removeEventListener('keydown', _onBackspaceCapture, true);
+    holder.addEventListener('keydown', _onBackspaceCapture, true);   // capture: 도구/코어보다 먼저
+  }
+
+  // 캐럿이 들어있는 블록 {idx, block} — Editor.js API + DOM 위치로 보정(커스텀 블록에서 더 안전)
+  function _currentBlockInfo(ed, node) {
+    let idx = -1;
+    try { idx = ed.blocks.getCurrentBlockIndex(); } catch {}
+    const host = node && (node.nodeType === 3 ? node.parentElement : node);
+    const blockEl = host && host.closest ? host.closest('.ce-block') : null;
+    if (blockEl) {
+      const all = Array.from(document.querySelectorAll('#editorjs .codex-editor__redactor > .ce-block'));
+      const di = all.indexOf(blockEl);
+      if (di >= 0) idx = di;
+    }
+    if (idx < 0) return null;
+    let block; try { block = ed.blocks.getBlockByIndex(idx); } catch {}
+    return block ? { idx, block } : null;
+  }
+
+  function _onBackspaceCapture(e) {
+    if (e.key !== 'Backspace' || e.isComposing) return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+    const sel = window.getSelection();
+    if (!sel || !sel.isCollapsed || sel.rangeCount === 0) return;
+    const ed = _editor;
+    if (!ed || !ed.blocks) return;
+
+    const info = _currentBlockInfo(ed, sel.anchorNode);
+    if (!info || !_SPECIAL_BACKSPACE.has(info.block.name)) return;
+
+    const holder = info.block.holder;
+    if (!holder) return;
+    const editables = Array.from(holder.querySelectorAll('[contenteditable="true"],[contenteditable=""]'));
+    if (!editables.length) return;
+
+    // 캐럿이 있는 '줄'(편집영역) 찾기
+    let lineEl = null;
+    for (let el = (sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentElement : sel.anchorNode);
+         el && el !== holder; el = el.parentElement) {
+      if (editables.indexOf(el) !== -1) { lineEl = el; break; }
+    }
+    if (!lineEl || lineEl !== editables[0]) return;   // 블록 '첫 줄'에서만 개입(둘째 줄 이후는 도구에 맡김)
+
+    // 캐럿이 그 줄 맨 앞인지(앞에 글자 없음)
+    let atStart = false;
+    try {
+      const r = sel.getRangeAt(0).cloneRange();
+      r.selectNodeContents(lineEl);
+      r.setEnd(sel.anchorNode, sel.anchorOffset);
+      atStart = r.toString().length === 0;
+    } catch {}
+    if (!atStart) return;
+
+    // 여기서부터 가로채서 '문단으로 풀기'
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    _unwrapToParagraph(ed, info.idx, info.block).catch(err => console.warn('백스페이스 변환 실패:', err));
+  }
+
+  async function _unwrapToParagraph(ed, idx, block) {
+    const type = block.name;
+    const holder = block.holder;
+    const editables = holder ? Array.from(holder.querySelectorAll('[contenteditable="true"],[contenteditable=""]')) : [];
+    const clean = (s) => (s && String(s).trim() && String(s).trim() !== '<br>') ? s : '';
+
+    let saved = null;
+    try { saved = await block.save(); } catch {}
+    const data = (saved && saved.data) ? saved.data : null;
+
+    let html = editables[0] ? editables[0].innerHTML : '';   // 기본값(DOM)
+    let remaining = null;                                    // 아래에 남길 목록/체크리스트
+
+    if (data) {
+      if (type === 'toggle') {
+        html = [clean(data.title), clean(data.content)].filter(Boolean).join('<br>');
+      } else if (type === 'callout') {
+        html = data.text || html;
+      } else if (type === 'quote') {
+        html = [clean(data.text), clean(data.caption)].filter(Boolean).join('<br>');
+      } else if (type === 'checklist') {
+        const items = Array.isArray(data.items) ? data.items : [];
+        html = items[0] ? (items[0].text || '') : '';
+        if (items.length > 1) remaining = { type: 'checklist', data: { items: items.slice(1) } };
+      } else if (type === 'list') {
+        const items = Array.isArray(data.items) ? data.items : [];
+        const first = items[0];
+        html = first ? (typeof first === 'string' ? first : (first.content || '')) : '';
+        const sub = (first && Array.isArray(first.items)) ? first.items : [];
+        const rest = [...sub, ...items.slice(1)];
+        if (rest.length) remaining = { type: 'list', data: { style: data.style || 'unordered', items: rest } };
+      }
+    } else {
+      // 저장 데이터를 못 읽으면 모든 줄을 합쳐 무손실 평문으로(구조만 평탄화)
+      html = editables.map(el => clean(el.innerHTML)).filter(Boolean).join('<br>');
+    }
+
+    // 현재 블록을 같은 자리에서 문단으로 교체(윗블록은 건드리지 않음)
+    ed.blocks.insert('paragraph', { text: html }, {}, idx, true, true);
+    if (remaining) {
+      try { ed.blocks.insert(remaining.type, remaining.data, {}, idx + 1, false); }
+      catch (err) { console.warn('남은 목록 재삽입 실패:', err); }
+    }
+    try { ed.caret.setToBlock(idx, 'start'); } catch {}
+    Workspace.markDirty();
+    document.dispatchEvent(new CustomEvent('darakbang:editorChanged'));
   }
 
   function _onHoverMove(e) {

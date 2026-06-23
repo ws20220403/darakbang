@@ -15,8 +15,9 @@ const App = (() => {
   let _globalEventsBound   = false;  // 중복 바인딩 방지
   let _coverResizeHandler  = null;
   let _autosaveTimer       = null;   // 디바운스 자동저장
-  const AUTOSAVE_DELAY     = 1500;   // ms
+  const AUTOSAVE_DELAY     = 900;    // ms — [v9] 1500→900: 저장 연동 체감 단축(요구사항 2)
   let _bodyLinks           = new Set(); // 현재 페이지 본문의 하위문서 링크 스냅샷(삭제 동기화용)
+  let _reconnectBanner     = null;   // [v9] 토큰 만료 시 '다시 연결' 배너(중복 방지용)
 
   /* =========================================================
      자동 저장 / 저장 상태 표시
@@ -31,9 +32,48 @@ const App = (() => {
     if (!Workspace.getCurrentPageId()) return;
     _autosaveTimer = setTimeout(async () => {
       if (!Workspace.isDirty()) return;
+      // [v9] 토큰 재연결 대기 중에는 자동저장 보류 → '팝업 실패' 오류 반복(스팸) 방지.
+      //      내용은 그대로 남고, 사용자가 '다시 연결'을 누르면 저장이 이어집니다(요구사항 4).
+      if (Auth.needsReauth && Auth.needsReauth()) return;
       if (!UI.isOnline() && !Storage.isDemo()) return; // 오프라인이면 수동 저장에 맡김
       await _savePage({ silent: true, auto: true });
     }, AUTOSAVE_DELAY);
+  }
+
+  /* =========================================================
+     [v9] 토큰 만료(재연결 필요) 처리 — 요구사항 4
+     - 세션을 지우거나 내용을 잃지 않고, 사용자 클릭(제스처)으로 팝업을 정상적으로 열어
+       토큰을 갱신한 뒤 실패했던 저장을 자동 재시도한다.
+  ========================================================= */
+  function _isReauthError(e) {
+    if (!e) return false;
+    if (e.code === 'reauth_required') return true;
+    const m = String(e.message || '');
+    return /popup|토큰 갱신|팝업|reauth/i.test(m);
+  }
+
+  function _promptReconnect(retryFn) {
+    if (_reconnectBanner) return;   // 이미 떠 있으면 중복 표시 안 함
+    _reconnectBanner = UI.actionToast(
+      '구글 로그인 세션이 만료되어 저장하지 못했습니다. 작성한 내용은 그대로 있어요.',
+      'warning', '다시 연결',
+      async () => {
+        try {
+          await Auth.reconnect();
+          _dismissReconnect();
+          UI.toast('다시 연결됐습니다. 저장을 이어갑니다.', 'success');
+          if (typeof retryFn === 'function') await retryFn();
+        } catch (err) {
+          console.error('재연결 실패:', err);
+          UI.toast('다시 연결하지 못했습니다. 버튼을 한 번 더 눌러주세요.', 'error', 6000);
+        }
+      }
+    );
+  }
+
+  function _dismissReconnect() {
+    if (_reconnectBanner && typeof _reconnectBanner.remove === 'function') _reconnectBanner.remove();
+    _reconnectBanner = null;
   }
 
   /* =========================================================
@@ -698,7 +738,12 @@ const App = (() => {
       return saved;
     } catch (e) {
       console.error('저장 실패:', e);
-      UI.toast(`저장에 실패했습니다: ${e.message}`, 'error');
+      // [v9] 토큰 만료(팝업 실패 등)면 오류 토스트 대신 '다시 연결' 안내 + 저장 자동 재시도(요구사항 4)
+      if (_isReauthError(e)) {
+        _promptReconnect(() => _savePage(options));
+      } else {
+        UI.toast(`저장에 실패했습니다: ${e.message}`, 'error');
+      }
       return false;
     } finally {
       if (btnSave)       btnSave.disabled = false;
@@ -727,8 +772,8 @@ const App = (() => {
       Sidebar.render();
       await navigateToPage(result.meta.id);
 
-      // 제목 필드에 포커스 및 커서 위치
-      setTimeout(() => {
+      // 제목 필드에 포커스 및 커서 위치 — [v9] 300ms 고정 지연 제거, 다음 프레임에 즉시 포커스(요구사항 1)
+      const focusTitle = () => {
         const titleInput = document.getElementById('page-title-input');
         if (!titleInput) return;
         titleInput.focus();
@@ -738,7 +783,8 @@ const App = (() => {
         range.collapse(false);
         sel?.removeAllRanges();
         sel?.addRange(range);
-      }, 300);
+      };
+      requestAnimationFrame(focusTitle);
 
       return result;
     } catch (e) {

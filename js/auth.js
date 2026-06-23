@@ -31,6 +31,9 @@ const Auth = (() => {
 
   let tokenClient = null;
   let _tokenRefreshPromise = null;
+  let _needsReauth   = false;   // [v9] 조용한 갱신이 실패해 사용자 재연결이 필요한 상태
+  let _proactiveTimer = null;   // [v9] 만료 전 선제 갱신 타이머
+  let _visBound      = false;   // [v9] visibilitychange 1회 바인딩 가드
 
   /* =========================================================
      초기화
@@ -66,6 +69,8 @@ const Auth = (() => {
           const store = _store();
           store.setItem(STORAGE_KEY_TOKEN,   response.access_token);
           store.setItem(STORAGE_KEY_EXPIRES, String(expiresAt));
+          _needsReauth = false;                 // [v9] 갱신 성공 → 재연결 필요 상태 해제
+          _scheduleProactiveRefresh(expiresAt); // [v9] 만료 전 선제 갱신 예약
           _resolveTokenCallbacks?.(response.access_token, null);
         },
         error_callback: (err) => {
@@ -73,10 +78,42 @@ const Auth = (() => {
           _resolveTokenCallbacks?.(null, err);
         },
       });
+      _bindVisibilityRefresh();   // [v9] 탭 복귀 시 만료 임박 토큰 선제 갱신
       resolve();
     } catch (e) {
       reject(e);
     }
+  }
+
+  /* =========================================================
+     [v9] 만료 전 '조용한' 선제 갱신 — '팝업 열기 실패' 오류의 발생 빈도 자체를 줄임.
+       구글 세션이 살아 있으면 iframe 으로 조용히 갱신되어 토큰이 만료 상태로 방치되지 않는다.
+       조용히 실패하면(세션 재동의 필요 등) 그냥 두고, 저장 시점에 '다시 연결' 안내가 처리한다.
+  ========================================================= */
+  function _scheduleProactiveRefresh(expiresAt) {
+    clearTimeout(_proactiveTimer);
+    const lead = 2 * 60 * 1000;                                   // 만료 2분 전
+    const delay = Math.max(30 * 1000, expiresAt - Date.now() - lead);
+    _proactiveTimer = setTimeout(() => {
+      if (document.visibilityState === 'hidden') return;          // 숨은 탭은 복귀 시 처리
+      _silentRefresh().catch(() => {/* 조용히 실패 — 저장 시점 재연결 UI가 처리 */});
+    }, delay);
+  }
+
+  function _bindVisibilityRefresh() {
+    if (_visBound) return;
+    _visBound = true;
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      if (isDemo() || !tokenClient) return;
+      const store = _store();
+      if (!store.getItem(STORAGE_KEY_TOKEN)) return;              // 로그아웃 상태면 무시
+      const expiresAt = parseInt(store.getItem(STORAGE_KEY_EXPIRES) || '0');
+      // 이미 만료됐거나 2분 내 만료 예정이면 조용히 갱신 시도
+      if (Date.now() > expiresAt - 2 * 60 * 1000) {
+        _silentRefresh().catch(() => {});
+      }
+    });
   }
 
   // 토큰 요청 콜백 큐
@@ -109,15 +146,48 @@ const Auth = (() => {
       _resolveTokenCallbacks = (token, err) => {
         _resolveTokenCallbacks = null;
         _tokenRefreshPromise = null;
-        if (err) reject(new Error(`토큰 갱신 실패: ${JSON.stringify(err)}`));
-        else resolve(token);
+        if (err) {
+          const e = new Error(`토큰 갱신 실패: ${JSON.stringify(err)}`);
+          // 팝업 차단/상호작용 필요 → 세션을 지우지 말고 '재연결' 흐름으로 보냄(요구사항 4)
+          if (_isInteractionError(err)) e.code = 'reauth_required';
+          reject(e);
+        } else resolve(token);
       };
-      // prompt:'none' → 팝업 없이 silent 갱신. 실패 시 재로그인 필요
-      tokenClient.requestAccessToken({ prompt: 'none' });
+      if (!tokenClient) { _resolveTokenCallbacks(null, { type: 'no_client' }); return; }
+      // prompt:'none' → 팝업 없이 silent 갱신. 구글이 조용히 갱신 못 하면 팝업으로 폴백하는데,
+      // 사용자 제스처가 아니면 브라우저가 차단 → 'popup_failed_to_open'. 이 경우 reconnect 로 처리.
+      try { tokenClient.requestAccessToken({ prompt: 'none' }); }
+      catch (err) { _resolveTokenCallbacks?.(null, { type: 'popup_failed_to_open', raw: String(err) }); }
     });
 
     return _tokenRefreshPromise;
   }
+
+  // 상호작용(사용자 클릭)이 필요한 오류인지 판별 — 팝업 실패/세션 만료/동의 필요 등
+  function _isInteractionError(err) {
+    const s = (typeof err === 'string' ? err : JSON.stringify(err || '')).toLowerCase();
+    return /popup|interaction_required|login_required|consent_required|access_denied|failed to open|no_client/.test(s);
+  }
+
+  /* =========================================================
+     [v9] 재연결 — 사용자 클릭(제스처) 안에서 호출해야 팝업이 정상적으로 열린다.
+       prompt:'' → 기존 세션 사용, 필요할 때만 최소 UI. 성공 시 토큰 콜백이 저장/선제갱신을 처리.
+  ========================================================= */
+  function reconnect() {
+    return new Promise((resolve, reject) => {
+      if (!tokenClient) { reject(new Error('인증 모듈이 아직 초기화되지 않았습니다.')); return; }
+      _tokenRefreshPromise = null;
+      _resolveTokenCallbacks = (token, err) => {
+        _resolveTokenCallbacks = null;
+        if (err) reject(new Error(`재연결 실패: ${JSON.stringify(err)}`));
+        else { _needsReauth = false; resolve(token); }
+      };
+      try { tokenClient.requestAccessToken({ prompt: '' }); }
+      catch (err) { _resolveTokenCallbacks?.(null, { type: 'popup_failed_to_open', raw: String(err) }); }
+    });
+  }
+
+  function needsReauth() { return _needsReauth; }
 
   /* =========================================================
      토큰 가져오기 (자동 갱신)
@@ -135,7 +205,12 @@ const Auth = (() => {
     try {
       return await _silentRefresh();
     } catch (e) {
-      // silent refresh 실패 → 재로그인 필요
+      // [v9] 팝업 차단 등 '상호작용 필요'면 세션/내용을 지우지 말고 재연결 안내로(요구사항 4).
+      //      그 외(네트워크 등)면 기존대로 토큰 정리.
+      if (e && e.code === 'reauth_required') {
+        _needsReauth = true;
+        throw e;
+      }
       clearTokens();
       throw e;
     }
@@ -232,6 +307,8 @@ const Auth = (() => {
     login,
     logout,
     getToken,
+    reconnect,        // [v9] 사용자 클릭으로 토큰 재연결
+    needsReauth,      // [v9] 재연결 대기 상태 조회
     isLoggedIn,
     fetchUserInfo,
     clearTokens,

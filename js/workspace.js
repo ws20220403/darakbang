@@ -89,7 +89,7 @@ const Workspace = (() => {
     };
     _workspace.pages.push(meta);
     _workspace.rootPageOrder.push(id);
-    await Storage.writePage(id, pageData);
+    await Storage.writePage(id, pageData, { create: true });
     _pageCache[id] = pageData;
   }
 
@@ -220,9 +220,11 @@ const Workspace = (() => {
       }
     }
 
-    // Drive에 저장
-    await Storage.writePage(id, pageData);
-    await _saveWorkspace();
+    // Drive에 저장 — [v9 속도] 새 페이지(create:true, findFile 생략) + 워크스페이스 저장을 병렬로
+    await Promise.all([
+      Storage.writePage(id, pageData, { create: true }),
+      _saveWorkspace(),
+    ]);
 
     // 로컬 캐시
     _pageCache[id] = pageData;
@@ -420,8 +422,11 @@ const Workspace = (() => {
       }
     }
 
-    await Storage.writePage(newId, pageData);
-    await _saveWorkspace();
+    // [v9 속도] 새 페이지(create:true) + 워크스페이스 저장 병렬
+    await Promise.all([
+      Storage.writePage(newId, pageData, { create: true }),
+      _saveWorkspace(),
+    ]);
     _pageCache[newId] = pageData;
     return { meta, pageData };
   }
@@ -489,8 +494,11 @@ const Workspace = (() => {
       _syncChildrenOrderFromBody(meta, editorData); // 본문 하위문서 순서 → 사이드바 순서
     }
 
-    await Storage.writePage(pageId, updated);
-    await _saveWorkspace();
+    // [v9 속도] 본문 저장 + 워크스페이스(메타/검색인덱스) 저장을 병렬로 — 연동 지연 단축(요구사항 2)
+    await Promise.all([
+      Storage.writePage(pageId, updated),
+      _saveWorkspace(),
+    ]);
 
     _pageCache[pageId] = updated;
     _isDirty = false;

@@ -42,6 +42,41 @@ const UI = (() => {
     return el;
   }
 
+  /* [v9] 동작 버튼이 달린 토스트 — 자동으로 사라지지 않음(호출측이 반환된 요소를 .remove() 로 닫음).
+     토큰 만료 시 '다시 연결' 안내에 사용. 컴포넌트 CSS 에 의존하지 않도록 버튼 스타일은 인라인. */
+  function actionToast(message, type = 'warning', actionLabel = '확인', onAction = null) {
+    const container = document.getElementById('toast-container');
+    if (!container) return null;
+    const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.setAttribute('role', 'alert');
+
+    const row = document.createElement('div');
+    Object.assign(row.style, { display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'space-between', width: '100%' });
+
+    const msg = document.createElement('span');
+    msg.className = 'toast-msg';
+    msg.innerHTML = `<span class="toast-icon" aria-hidden="true">${icons[type] || 'ℹ️'}</span> ${escapeHtml(message)}`;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = actionLabel;
+    Object.assign(btn.style, {
+      marginLeft: '8px', padding: '5px 14px', borderRadius: '6px', border: 'none',
+      cursor: 'pointer', fontWeight: '600', whiteSpace: 'nowrap', flex: '0 0 auto',
+      background: 'var(--color-brand, #6c63ff)', color: '#fff',
+    });
+    btn.addEventListener('click', (e) => { e.stopPropagation(); if (onAction) onAction(); });
+
+    row.appendChild(msg);
+    row.appendChild(btn);
+    el.appendChild(row);
+    container.appendChild(el);
+    return el;   // 자동 소멸 없음 — 호출측이 닫음
+  }
+
   /* =========================================================
      MODAL — 삭제 확인
   ========================================================= */
@@ -538,6 +573,7 @@ const UI = (() => {
   ========================================================= */
   return {
     toast,
+    actionToast,      // [v9] 버튼 달린 토스트(재연결 안내)
     confirmDelete,
     confirmUnsaved,
     prompt,
