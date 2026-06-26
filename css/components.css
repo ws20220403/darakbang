@@ -224,7 +224,7 @@
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius-xl);
   box-shadow: var(--shadow-xl);
-  width: 320px;
+  width: 340px;
   z-index: 600;
   overflow: hidden;
   animation: slideUp 0.15s ease;
@@ -282,6 +282,64 @@
 .emoji-item:hover {
   background: var(--bg-hover);
   transform: scale(1.1);
+}
+
+/* [v9b] 카테고리 칩 (빠른 이동) */
+.emoji-cats {
+  display: flex;
+  gap: 2px;
+  padding: 6px var(--spacing-sm);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border-color);
+  scrollbar-width: none;
+}
+.emoji-cats::-webkit-scrollbar { display: none; }
+.emoji-chip {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  font-size: 1.05rem;
+  line-height: 1.2;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  opacity: 0.55;
+  transition: all var(--transition-fast);
+}
+.emoji-chip:hover { background: var(--bg-hover); opacity: 1; }
+.emoji-chip.is-active { background: var(--color-brand-light); opacity: 1; }
+
+/* [v9b] 카테고리 라벨 (그리드 전체폭, 스크롤 시 상단 고정) */
+.emoji-cat-label {
+  grid-column: 1 / -1;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 8px 4px 2px;
+  position: sticky;
+  top: -2px;
+  background: var(--bg-modal);
+  z-index: 1;
+}
+
+/* [v9b] '이모지 없음' 타일 — 엑셀의 '채우기 없음'처럼 맨 위 (요구사항) */
+.emoji-item--none {
+  grid-column: 1 / -1;
+  width: auto;
+  justify-content: flex-start;
+  gap: 6px;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  border: 1px dashed var(--border-color);
+}
+.emoji-item--none:hover { transform: none; background: var(--bg-hover); }
+
+.emoji-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 16px;
 }
 
 /* =========================================================

@@ -729,3 +729,29 @@
 }
 .table-block__bar-btn:hover { background: var(--bg-active); color: var(--text-primary); border-color: var(--color-brand); }
 .table-block__bar-btn.is-active { background: var(--color-brand-dim); color: var(--color-brand); border-color: var(--color-brand); }
+
+/* =========================================================
+   SIMPLE LIST (글머리/번호 목록) — v9c
+========================================================= */
+.simple-list { margin: 2px 0; }
+.simple-list__list {
+  margin: 0;
+  padding-left: 1.6em;
+}
+.simple-list__list--unordered { list-style: disc outside; }
+.simple-list__list--ordered   { list-style: decimal outside; }
+.simple-list__item {
+  margin: 1px 0;
+  padding-left: 2px;
+}
+.simple-list__item::marker { color: var(--text-secondary); }
+.simple-list__content {
+  outline: none;
+  min-height: 1.5em;
+  line-height: 1.6;
+  word-break: break-word;
+}
+.simple-list__content:empty::before {
+  content: attr(data-ph);
+  color: var(--color-placeholder);
+}
