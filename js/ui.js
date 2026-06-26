@@ -258,64 +258,115 @@ const UI = (() => {
 
   let emojiCallback = null;
   let emojiPickerOpen = false;
+  let _emojiActiveCat = 'all';   // [v9b] 활성 카테고리
+
+  // [v9b] emoji-data.js(window.EMOJI_DATA) 사용. 없으면 옛 기본셋(EMOJIS)으로 폴백.
+  const _emojiCats = (typeof EMOJI_DATA !== 'undefined' && Array.isArray(EMOJI_DATA) && EMOJI_DATA.length)
+    ? EMOJI_DATA
+    : [{ id: 'basic', label: '기본', icon: '📄', kw: '', emojis: (EMOJIS || []).join(' ') }];
+  const _emojiAll = (typeof EMOJI_DATA !== 'undefined' && EMOJI_DATA.ALL) ? EMOJI_DATA.ALL : (EMOJIS || []);
+  const _emojiSplit = (s) => (s || '').split(/\s+/).filter(Boolean);
+
+  // 맨 위 '이모지 없음(제거)' 타일 — 엑셀의 '채우기 없음'처럼 (요구사항)
+  const _emojiNoneTile = () =>
+    `<button class="emoji-item emoji-item--none" data-none="1" title="이모지 없음(제거)" aria-label="이모지 없음">🚫 이모지 없음</button>`;
+  const _emojiBtns = (list) =>
+    list.map(e => `<button class="emoji-item" data-emoji="${e}" title="${e}" aria-label="${e}">${e}</button>`).join('');
+
+  function _renderEmojiGrid(grid, query) {
+    const q = (query || '').trim().toLowerCase();
+    let html = _emojiNoneTile();          // '없음'은 항상 맨 위
+    if (q) {
+      // 카테고리 라벨/키워드 매칭 → 그 카테고리 전체. 매칭 없으면 이모지 문자 자체 검색.
+      const cats = _emojiCats.filter(c => c.label.toLowerCase().includes(q) || (c.kw || '').toLowerCase().includes(q));
+      let list;
+      if (cats.length) {
+        const seen = new Set(); list = [];
+        cats.forEach(c => _emojiSplit(c.emojis).forEach(e => { if (!seen.has(e)) { seen.add(e); list.push(e); } }));
+      } else {
+        list = _emojiAll.filter(e => e === q || e.includes(q));
+      }
+      html += list.length ? _emojiBtns(list) : '<div class="emoji-empty">결과 없음</div>';
+    } else if (_emojiActiveCat !== 'all') {
+      const c = _emojiCats.find(x => x.id === _emojiActiveCat);
+      html += _emojiBtns(_emojiSplit(c ? c.emojis : ''));
+    } else {
+      _emojiCats.forEach(c => { html += `<div class="emoji-cat-label">${c.label}</div>` + _emojiBtns(_emojiSplit(c.emojis)); });
+    }
+    grid.innerHTML = html;
+  }
+
+  function _renderEmojiChips(bar) {
+    const chip = (id, label) => `<button class="emoji-chip${_emojiActiveCat === id ? ' is-active' : ''}" data-cat="${id}" title="${label}">${label}</button>`;
+    bar.innerHTML = chip('all', '전체') + _emojiCats.map(c => chip(c.id, c.icon)).join('');
+  }
 
   function initEmojiPicker() {
     const picker = document.getElementById('emoji-picker');
     const grid   = document.getElementById('emoji-grid');
     const searchInput = document.getElementById('emoji-search');
+    if (!picker || !grid) return;
 
-    function renderEmojis(list) {
-      grid.innerHTML = '';
-      list.forEach(emoji => {
-        const btn = document.createElement('button');
-        btn.className = 'emoji-item';
-        btn.textContent = emoji;
-        btn.setAttribute('role', 'listitem');
-        btn.setAttribute('aria-label', emoji);
-        btn.addEventListener('click', () => {
-          if (emojiCallback) emojiCallback(emoji);
-          closeEmojiPicker();
-        });
-        grid.appendChild(btn);
-      });
+    // 카테고리 칩 바 (헤더와 그리드 사이에 1회 삽입)
+    let bar = picker.querySelector('.emoji-cats');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.className = 'emoji-cats';
+      grid.parentNode.insertBefore(bar, grid);
     }
+    _renderEmojiChips(bar);
+    _renderEmojiGrid(grid, '');
 
-    renderEmojis(EMOJIS);
+    // 리스너는 1회만 바인딩(재로그인 시 중복 방지)
+    if (!picker.dataset.emojiBound) {
+      picker.dataset.emojiBound = '1';
 
-    searchInput.addEventListener('input', () => {
-      const q = searchInput.value.trim().toLowerCase();
-      if (!q) {
-        renderEmojis(EMOJIS);
-        return;
-      }
-      // 카테고리 키워드(한/영) 또는 이모지 자체로 검색
-      const filtered = EMOJIS.filter((e, i) => e === q || emojiKeywords(i).toLowerCase().includes(q));
-      renderEmojis(filtered);
-    });
+      // 칩 클릭(위임)
+      bar.addEventListener('click', (e) => {
+        const b = e.target.closest('.emoji-chip'); if (!b) return;
+        _emojiActiveCat = b.dataset.cat;
+        bar.querySelectorAll('.emoji-chip').forEach(x => x.classList.toggle('is-active', x === b));
+        if (searchInput) searchInput.value = '';
+        _renderEmojiGrid(grid, '');
+        grid.scrollTop = 0;
+      });
 
-    // 외부 클릭 닫기
-    document.addEventListener('click', (e) => {
-      if (emojiPickerOpen && !picker.contains(e.target) && !e.target.closest('[data-emoji-trigger]')) {
+      // 그리드 클릭(위임) — 이모지 선택 / '없음'(빈 문자열)
+      grid.addEventListener('click', (e) => {
+        const b = e.target.closest('.emoji-item'); if (!b) return;
+        const val = b.dataset.none ? '' : (b.dataset.emoji || '');
+        if (emojiCallback) emojiCallback(val);
         closeEmojiPicker();
-      }
-    });
+      });
 
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && emojiPickerOpen) closeEmojiPicker();
-    });
+      // 검색
+      searchInput?.addEventListener('input', () => { _renderEmojiGrid(grid, searchInput.value); grid.scrollTop = 0; });
+
+      // 외부 클릭 / Esc 닫기
+      document.addEventListener('click', (e) => {
+        if (emojiPickerOpen && !picker.contains(e.target) && !e.target.closest('[data-emoji-trigger]')) closeEmojiPicker();
+      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && emojiPickerOpen) closeEmojiPicker(); });
+    }
   }
 
   function openEmojiPicker(anchorEl, callback) {
     const picker = document.getElementById('emoji-picker');
     const searchInput = document.getElementById('emoji-search');
+    const grid = document.getElementById('emoji-grid');
 
     emojiCallback = callback;
     emojiPickerOpen = true;
+    _emojiActiveCat = 'all';               // 열 때마다 전체 보기로 초기화
+    const bar = picker.querySelector('.emoji-cats');
+    if (bar) _renderEmojiChips(bar);
+    if (searchInput) searchInput.value = '';
+    if (grid) { _renderEmojiGrid(grid, ''); grid.scrollTop = 0; }
 
     // 위치 계산
     const rect = anchorEl.getBoundingClientRect();
-    const pickerW = 320;
-    const pickerH = 340;
+    const pickerW = 340;
+    const pickerH = 400;
 
     let left = rect.left;
     let top  = rect.bottom + 4;
@@ -324,14 +375,13 @@ const UI = (() => {
       left = window.innerWidth - pickerW - 8;
     }
     if (top + pickerH > window.innerHeight) {
-      top = rect.top - pickerH - 4;
+      top = Math.max(8, rect.top - pickerH - 4);
     }
 
     picker.style.left = `${Math.max(8, left)}px`;
     picker.style.top  = `${Math.max(8, top)}px`;
     picker.classList.remove('hidden');
-    searchInput.value = '';
-    searchInput.focus();
+    searchInput?.focus();
   }
 
   function closeEmojiPicker() {

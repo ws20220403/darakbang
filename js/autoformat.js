@@ -34,7 +34,7 @@ const AutoFormat = (() => {
   const INLINE = [
     ['->', '→'], ['<-', '←'], ['=>', '⇒'], ['<=', '⇐'],
     ['(tm)', '™'], ['(c)', '©'], ['(r)', '®'],
-    ['!=', '≠'], ['...', '…'],
+    ['!=', '≠'],
   ].sort((a, b) => b[0].length - a[0].length);
 
   // 줄머리 변환(문단 전체 텍스트가 정확히 접두어일 때만)
@@ -124,6 +124,20 @@ const AutoFormat = (() => {
         if (i == null || i < 0) return;
         // 접두어만 있는 문단을 같은 자리에서 목표 블록으로 교체(replace=true), 포커스 이동
         ed.blocks.insert(match.type, JSON.parse(JSON.stringify(match.data)), {}, i, true, true);
+        // [v9c] 빠른생성(목록·체크박스 등) 후 커서가 새 블록 안에 바로 놓이도록(요구사항 4).
+        //   setToBlock 만으로는 커스텀 목록(SimpleList) 편집영역을 못 잡는 경우가 있어 첫 편집영역에 직접 포커스 폴백.
+        try { ed.caret.setToBlock(i, 'start'); } catch {}
+        try {
+          const nb = ed.blocks.getBlockByIndex(i);
+          const inp = nb && nb.holder && nb.holder.querySelector('[contenteditable="true"],[contenteditable=""],textarea,input');
+          if (inp) {
+            inp.focus();
+            if (inp.isContentEditable) {
+              const sel = window.getSelection(); const rg = document.createRange();
+              rg.selectNodeContents(inp); rg.collapse(true); sel.removeAllRanges(); sel.addRange(rg);
+            }
+          }
+        } catch {}
         Workspace.markDirty();
         document.dispatchEvent(new CustomEvent('darakbang:editorChanged'));
       } catch (err) {

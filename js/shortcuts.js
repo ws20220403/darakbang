@@ -37,7 +37,7 @@ const Shortcuts = (() => {
       rows: [
         { from: '->', to: '→' }, { from: '<-', to: '←' },
         { from: '=>', to: '⇒' }, { from: '<=', to: '⇐' },
-        { from: '!=', to: '≠' }, { from: '...', to: '…' },
+        { from: '!=', to: '≠' },
         { from: '(c)', to: '©' }, { from: '(r)', to: '®' }, { from: '(tm)', to: '™' },
       ],
     },

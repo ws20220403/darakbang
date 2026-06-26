@@ -525,7 +525,8 @@ const App = (() => {
     // 아이콘
     const iconDisplay = document.getElementById('page-icon-display');
     if (iconDisplay) {
-      iconDisplay.textContent = pageData.icon || '📄';
+      // [v9b] '이모지 없음'(빈 문자열)을 그대로 보존 — || 가 아니라 ?? 사용
+      iconDisplay.textContent = pageData.icon ?? '📄';
     }
 
     // 모바일 타이틀
@@ -563,12 +564,15 @@ const App = (() => {
      커버 이미지
   ========================================================= */
   async function _renderCover(fileId) {
-    const coverEl  = document.getElementById('page-cover');
-    const coverImg = document.getElementById('page-cover-img');
+    const coverEl   = document.getElementById('page-cover');
+    const coverImg  = document.getElementById('page-cover-img');
+    const contentEl = document.getElementById('page-content');
     if (!coverEl || !coverImg) return;
+    const setHasCover = (on) => contentEl?.classList.toggle('has-cover', !!on);
 
     if (!fileId) {
       coverEl.classList.add('hidden');
+      setHasCover(false);
       return;
     }
 
@@ -576,32 +580,19 @@ const App = (() => {
       const blobUrl = await EditorManager.loadCoverImage(fileId);
       if (blobUrl) {
         coverImg.src = blobUrl;
-        _fitCoverToImage(coverEl, coverImg);
         coverEl.classList.remove('hidden');
+        setHasCover(true);   // [v9b] Notion식 슬림 배너 — 높이는 CSS 고정(object-fit:cover), JS 높이계산 제거
       } else {
         coverEl.classList.add('hidden');
+        setHasCover(false);
       }
     } catch (e) {
       console.warn('커버 이미지 로드 실패:', e);
       coverEl.classList.add('hidden');
+      setHasCover(false);
     }
   }
-
-  function _fitCoverToImage(coverEl, coverImg) {
-    const update = () => {
-      const width = coverEl.clientWidth || 0;
-      if (!width || !coverImg.naturalWidth || !coverImg.naturalHeight) return;
-      const naturalHeight = width * (coverImg.naturalHeight / coverImg.naturalWidth);
-      const maxHeight = width * (4 / 6);
-      coverEl.style.setProperty('--cover-height', `${Math.min(naturalHeight, maxHeight)}px`);
-    };
-
-    coverImg.onload = update;
-    if (_coverResizeHandler) window.removeEventListener('resize', _coverResizeHandler);
-    _coverResizeHandler = update;
-    window.addEventListener('resize', _coverResizeHandler);
-    requestAnimationFrame(update);
-  }
+  // [v9b] _fitCoverToImage 제거: 커버 높이는 CSS 고정(슬림 배너)으로 처리. 창 resize 리스너도 불필요.
 
   function _triggerCoverUpload() {
     document.getElementById('cover-file-input')?.click();
@@ -658,7 +649,7 @@ const App = (() => {
     ancestors.forEach((meta) => {
       const span = document.createElement('span');
       span.className = 'breadcrumb-item';
-      span.innerHTML = `<span class="breadcrumb-icon">${meta.icon || '📄'}</span><span class="breadcrumb-text">${UI.escapeHtml(meta.title || '제목 없음')}</span>`;
+      span.innerHTML = `<span class="breadcrumb-icon">${meta.icon ?? '📄'}</span><span class="breadcrumb-text">${UI.escapeHtml(meta.title || '제목 없음')}</span>`;
       span.addEventListener('click', () => navigateToPage(meta.id));
       nav.appendChild(span);
 
@@ -673,7 +664,7 @@ const App = (() => {
       const span = document.createElement('span');
       span.className = 'breadcrumb-item breadcrumb-item-current';
       span.setAttribute('aria-current', 'page');
-      span.innerHTML = `<span class="breadcrumb-icon">${current.icon || '📄'}</span><span class="breadcrumb-text">${UI.escapeHtml(current.title || '제목 없음')}</span>`;
+      span.innerHTML = `<span class="breadcrumb-icon">${current.icon ?? '📄'}</span><span class="breadcrumb-text">${UI.escapeHtml(current.title || '제목 없음')}</span>`;
       nav.appendChild(span);
     }
   }
@@ -702,7 +693,9 @@ const App = (() => {
 
     const titleInput = document.getElementById('page-title-input');
     const title = titleInput?.textContent?.trim() || '제목 없음';
-    const icon  = document.getElementById('page-icon-display')?.textContent?.trim() || '📄';
+    // [v9b] '이모지 없음'(빈 문자열)을 보존 — 비어 있으면 빈 채로 저장(|| '📄' 금지)
+    const iconRaw = document.getElementById('page-icon-display')?.textContent;
+    const icon  = (iconRaw == null ? '📄' : iconRaw.trim());
 
     // 저장 버튼 비활성화 (중복 방지)
     const btnSave       = document.getElementById('btn-save');

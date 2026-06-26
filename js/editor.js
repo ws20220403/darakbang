@@ -89,7 +89,9 @@ const EditorManager = (() => {
         inlineToolbar: ['bold', 'italic', 'underline', 'inlineCode', 'link'],
       },
       list: {
-        class: NestedList,
+        // [v9c] @editorjs/nested-list → 평면 SimpleList(blocks.js)로 교체.
+        //  Enter=새 항목·방향키 이동·줄 묶임 문제 해결. 데이터 스키마는 동일({style,items:[{content,items}]}).
+        class: SimpleList,
         inlineToolbar: true,
         config: { defaultStyle: 'unordered' },
       },

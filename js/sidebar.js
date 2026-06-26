@@ -122,7 +122,7 @@ const Sidebar = (() => {
     // Icon
     const iconEl = document.createElement('span');
     iconEl.className = 'nav-item-icon';
-    iconEl.textContent = meta.icon || '📄';
+    iconEl.textContent = meta.icon ?? '📄';
 
     // Title
     const titleEl = document.createElement('span');
@@ -268,7 +268,7 @@ const Sidebar = (() => {
 
     const iconEl = document.createElement('span');
     iconEl.className = 'nav-item-icon';
-    iconEl.textContent = meta.icon || '📄';
+    iconEl.textContent = meta.icon ?? '📄';
 
     const titleEl = document.createElement('span');
     titleEl.className = 'nav-item-title';
@@ -440,7 +440,7 @@ const Sidebar = (() => {
       );
 
       li.innerHTML = `
-        <span class="search-result-icon">${meta.icon || '📄'}</span>
+        <span class="search-result-icon">${meta.icon ?? '📄'}</span>
         <span class="search-result-title">${highlighted}</span>
       `;
 

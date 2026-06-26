@@ -479,7 +479,7 @@ const Workspace = (() => {
       ...existing,
       id:           pageId,
       title:        title || '제목 없음',
-      icon:         icon  || '📄',
+      icon:         (icon != null ? icon : '📄'),   // [v9b] '이모지 없음'(빈 문자열) 보존
       coverImageId: existing.parentId ? null : (coverImageId !== undefined ? coverImageId : existing.coverImageId),
       updatedAt:    now,
       editorData:   editorData,

@@ -293,6 +293,246 @@ class CalloutTool {
 }
 
 /* =========================================================
+   SIMPLE LIST (글머리/번호 목록) — v9c
+   · @editorjs/nested-list 대체. '평면' 목록(중첩 없음)으로 다음을 보장:
+     - Enter = 새 항목(어떤 글자로 끝나도 안정적), 빈 마지막 항목에서 Enter = 목록 종료(문단).
+     - ↑/↓ = 항목(줄) 사이 이동, Backspace(빈/시작) = 이전 항목과 합치기.
+   · 데이터는 기존과 호환: { style, items:[{content, items:[]}] }.
+     불러올 때 중첩(items)은 평탄화 → 2줄 이상이 하나로 묶이던 문제 해소.
+   · 첫 항목 맨앞 Backspace 는 editor.js v9 캡처 핸들러가 '문단으로 풀기'로 처리(충돌 없음).
+========================================================= */
+class SimpleList {
+  static get toolbox() {
+    return [
+      { title: '글머리 목록', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/></svg>', data: { style: 'unordered' } },
+      { title: '번호 목록',   icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="20" y2="6"/><line x1="10" y1="12" x2="20" y2="12"/><line x1="10" y1="18" x2="20" y2="18"/><text x="2" y="8.5" font-size="7" fill="currentColor" stroke="none">1</text><text x="2" y="14.5" font-size="7" fill="currentColor" stroke="none">2</text><text x="2" y="20.5" font-size="7" fill="currentColor" stroke="none">3</text></svg>', data: { style: 'ordered' } },
+    ];
+  }
+  static get isReadOnlySupported() { return true; }
+  static get enableLineBreaks() { return true; }   // Enter 를 Editor.js 가 가로채지 않고 이 도구가 처리
+
+  constructor({ data, config, readOnly }) {
+    this.readOnly = !!readOnly;
+    const d = data || {};
+    this._style = (d.style === 'ordered') ? 'ordered'
+                : (d.style === 'unordered') ? 'unordered'
+                : ((config && config.defaultStyle === 'ordered') ? 'ordered' : 'unordered');
+    this._items = SimpleList._flatten(d.items);
+    if (!this._items.length) this._items = [''];
+    this._wrapper = null;
+    this._list = null;
+  }
+
+  // 기존 nested-list({content,items}) · 평면(string) 모두 평탄화
+  static _flatten(items) {
+    const out = [];
+    const walk = (arr) => (Array.isArray(arr) ? arr : []).forEach(it => {
+      if (typeof it === 'string') out.push(it);
+      else if (it && typeof it === 'object') { out.push(it.content || ''); if (Array.isArray(it.items) && it.items.length) walk(it.items); }
+    });
+    walk(items);
+    return out;
+  }
+
+  render() {
+    const wrap = document.createElement('div');
+    wrap.className = 'simple-list';
+    this._wrapper = wrap;
+    this._buildList();
+    return wrap;
+  }
+
+  _buildList() {
+    const tag = this._style === 'ordered' ? 'ol' : 'ul';
+    const list = document.createElement(tag);
+    list.className = 'simple-list__list simple-list__list--' + this._style;
+    this._items.forEach(html => list.appendChild(this._makeItem(html)));
+    this._wrapper.innerHTML = '';
+    this._wrapper.appendChild(list);
+    this._list = list;
+  }
+
+  _makeItem(html) {
+    const li = document.createElement('li');
+    li.className = 'simple-list__item';
+    const c = document.createElement('div');
+    c.className = 'simple-list__content';
+    c.contentEditable = this.readOnly ? 'false' : 'true';
+    c.innerHTML = html || '';
+    if (!this.readOnly) {
+      c.addEventListener('keydown', (e) => this._onKey(e, li, c));
+      c.addEventListener('input', () => Workspace.markDirty());
+    }
+    li.appendChild(c);
+    return li;
+  }
+
+  _collect() { return Array.from(this._wrapper.querySelectorAll('.simple-list__content')).map(c => c.innerHTML); }
+
+  _onKey(e, li, content) {
+    if (e.isComposing) return;
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); e.stopPropagation();
+      this._onEnter(li, content);
+    } else if (e.key === 'ArrowDown' && !e.shiftKey && !e.altKey && !e.metaKey) {
+      if (this._atEdge(content, +1)) {
+        const next = li.nextElementSibling;
+        if (next) { e.preventDefault(); this._focus(next, true); }
+      }
+    } else if (e.key === 'ArrowUp' && !e.shiftKey && !e.altKey && !e.metaKey) {
+      if (this._atEdge(content, -1)) {
+        const prev = li.previousElementSibling;
+        if (prev) { e.preventDefault(); this._focus(prev, false); }
+      }
+    } else if (e.key === 'Backspace') {
+      if (this._atStart(content)) {
+        const prev = li.previousElementSibling;
+        if (prev) {
+          // 이전 항목 끝으로 내용 합치기
+          e.preventDefault(); e.stopPropagation();
+          const pc = prev.querySelector('.simple-list__content');
+          const at = pc.textContent.length;
+          pc.innerHTML = pc.innerHTML + content.innerHTML;
+          li.remove();
+          this._focusAtTextOffset(pc, at);
+          Workspace.markDirty();
+        }
+        // prev 없음(첫 항목) → 가로채지 않음: editor.js v9 캡처 핸들러가 '문단으로 풀기'
+      }
+      // 시작이 아니면 기본 글자 삭제
+    }
+  }
+
+  _onEnter(li, content) {
+    const empty = content.textContent.trim() === '';
+    const isLast = li === this._list.lastElementChild;
+    if (empty && isLast) {                       // 빈 마지막 항목 → 목록 종료
+      this._exit(li, this._list.children.length === 1);
+      return;
+    }
+    const after = this._extractAfterCaret(content);
+    const newLi = this._makeItem(after);
+    li.after(newLi);
+    this._focus(newLi, true);
+    Workspace.markDirty();
+  }
+
+  _extractAfterCaret(content) {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return '';
+    const range = sel.getRangeAt(0);
+    const r = range.cloneRange();
+    r.selectNodeContents(content);
+    r.setStart(range.endContainer, range.endOffset);
+    const frag = r.extractContents();           // content 에는 캐럿 앞부분만 남음
+    const tmp = document.createElement('div'); tmp.appendChild(frag);
+    return tmp.innerHTML;
+  }
+
+  _exit(li, replaceWhole) {
+    const ed = (typeof EditorManager !== 'undefined') ? EditorManager.instance : null;
+    if (!ed || !ed.blocks) return;
+    const blockEl = this._wrapper.closest('.ce-block');
+    const all = Array.from(document.querySelectorAll('#editorjs .codex-editor__redactor > .ce-block'));
+    let idx = all.indexOf(blockEl);
+    if (idx < 0) { try { idx = ed.blocks.getCurrentBlockIndex(); } catch {} }
+    if (idx == null || idx < 0) return;
+    try {
+      if (replaceWhole) {
+        ed.blocks.insert('paragraph', {}, {}, idx, true, true);     // 목록(빈 1항목) → 문단으로 교체
+      } else {
+        li.remove();
+        ed.blocks.insert('paragraph', {}, {}, idx + 1, true);       // 아래에 새 문단
+      }
+      Workspace.markDirty();
+      document.dispatchEvent(new CustomEvent('darakbang:editorChanged'));
+    } catch (err) { console.warn('목록 종료 처리 실패:', err); }
+  }
+
+  _focus(li, atStart) {
+    const c = li.querySelector('.simple-list__content');
+    if (!c) return;
+    c.focus();
+    const sel = window.getSelection(); const r = document.createRange();
+    r.selectNodeContents(c); r.collapse(!!atStart);
+    sel.removeAllRanges(); sel.addRange(r);
+  }
+
+  _focusAtTextOffset(content, offset) {
+    content.focus();
+    const sel = window.getSelection(); const r = document.createRange();
+    let remaining = offset, target = null, toff = 0;
+    const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+    let n; while ((n = walker.nextNode())) { const len = n.nodeValue.length; if (remaining <= len) { target = n; toff = remaining; break; } remaining -= len; }
+    if (target) r.setStart(target, toff); else { r.selectNodeContents(content); r.collapse(false); }
+    r.collapse(true); sel.removeAllRanges(); sel.addRange(r);
+  }
+
+  _atStart(content) {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return false;
+    const r = sel.getRangeAt(0);
+    if (!r.collapsed) return false;
+    const probe = r.cloneRange();
+    probe.selectNodeContents(content);
+    probe.setEnd(r.endContainer, r.endOffset);
+    return probe.toString().length === 0;
+  }
+
+  // 캐럿이 항목의 시각적 첫 줄(dir<0)/마지막 줄(dir>0)에 있는지 — 한 줄 항목이면 항상 true
+  _atEdge(content, dir) {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return true;
+    const cr = sel.getRangeAt(0).getBoundingClientRect();
+    const box = content.getBoundingClientRect();
+    if (!cr || (cr.top === 0 && cr.height === 0)) return true;
+    const lh = parseFloat(getComputedStyle(content).lineHeight) || 20;
+    return dir < 0 ? (cr.top - box.top < lh * 0.7) : (box.bottom - cr.bottom < lh * 0.7);
+  }
+
+  save() {
+    const items = this._collect().map(content => ({ content: content.trim(), items: [] }));
+    return { style: this._style, items: items.length ? items : [{ content: '', items: [] }] };
+  }
+
+  static get sanitize() {
+    const inline = { b: true, strong: true, i: true, em: true, u: true, a: { href: true, target: true, rel: true }, code: true, mark: true, br: true };
+    return { style: false, items: { content: inline, items: false } };
+  }
+
+  // '변환' 메뉴 지원 — 다른 블록 ↔ 목록
+  static get conversionConfig() {
+    return {
+      export: (data) => SimpleList._flatten(data && data.items).join('\n'),
+      import: (str) => ({ style: 'unordered', items: [{ content: str || '', items: [] }] }),
+    };
+  }
+
+  // 블록 설정(⠿)에서 글머리 ↔ 번호 전환
+  renderSettings() {
+    const mk = (style, label, icon) => ({
+      icon, label,
+      isActive: this._style === style,
+      closeOnActivate: true,
+      onActivate: () => this._setStyle(style),
+    });
+    return [
+      mk('unordered', '글머리 기호', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/></svg>'),
+      mk('ordered', '번호 매기기', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="20" y2="6"/><line x1="10" y1="12" x2="20" y2="12"/><line x1="10" y1="18" x2="20" y2="18"/><text x="2" y="8.5" font-size="7" fill="currentColor" stroke="none">1</text><text x="2" y="14.5" font-size="7" fill="currentColor" stroke="none">2</text><text x="2" y="20.5" font-size="7" fill="currentColor" stroke="none">3</text></svg>'),
+    ];
+  }
+
+  _setStyle(style) {
+    if (this._style === style) return;
+    this._items = this._collect();
+    this._style = style;
+    this._buildList();
+    Workspace.markDirty();
+    document.dispatchEvent(new CustomEvent('darakbang:editorChanged'));
+  }
+}
+
+/* =========================================================
    IMAGE (Storage 기반)
 ========================================================= */
 class DarakImageTool {
