@@ -1,6 +1,6 @@
 {
   "version": "9.2.1",
-  "preparedAt": "2026-09-13T12:02:51.318104+00:00",
+  "preparedAt": "2026-09-13T12:07:25.046444+00:00",
   "sourceFingerprint": "a228997311f043f878badc73bdceab68d9de7aa34a3b5b924e02682a899b96f4",
   "editingDomTestsPassed": 32,
   "treeDomTestsPassed": 18,
@@ -17,7 +17,7 @@
   "site": "https://ws20220403.github.io/darakbang/",
   "previousCommit": "6d6f8750d36dfc8d49cfdaf33b25e49f145e12d7",
   "archive": "darakbang-v9-site.zip",
-  "archiveSha256": "5a6ea001dbd777724add84d848dfa9cf18959f63902d1f989bf7d63c5919aa66",
+  "archiveSha256": "31d64e734525033528f95c62f48db07f52acc6685f8b06fbe91170113c9abe28",
   "files": [
     {
       "path": ".nojekyll",
@@ -33,7 +33,7 @@
     },
     {
       "path": "css/components.css",
-      "sha256": "d2c38e434c28803a8822aec4f2bffd21dc29037c0b141a943696b8b96fc32c32"
+      "sha256": "d3b974c3e89ad28acdbdda095d11dc9b0c3d9ecd0a8279a37f543eda7226e068"
     },
     {
       "path": "css/editor.css",
@@ -65,7 +65,7 @@
     },
     {
       "path": "index.html",
-      "sha256": "3853d68ff7087506dec407914931fa03fe97ba848d4043ae7c74683be0c75d8c"
+      "sha256": "d75d9bd5aff555173835545125fc91eac27971a3532ec3aa137c6a954a1e3e6c"
     },
     {
       "path": "js/app.js",
@@ -237,7 +237,7 @@
     },
     {
       "path": "version.json",
-      "sha256": "969c34f1bd8364c8b23cae573fbc55d9efdb4400dc138e72cca44ef14c970be4"
+      "sha256": "b9d11d9c97288ff9f4f2e16d8ce140d96aaee34619f314a4d07edaf175e42cae"
     }
   ]
 }
