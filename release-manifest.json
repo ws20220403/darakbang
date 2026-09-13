@@ -1,9 +1,9 @@
 {
-  "version": "9.2.0",
-  "preparedAt": "2026-09-13T10:27:08.001333+00:00",
-  "sourceFingerprint": "6ba228008eecc589196b7053b01153c1020ef5c912ea41033b4773cb75a6233a",
+  "version": "9.2.1",
+  "preparedAt": "2026-09-13T12:02:51.318104+00:00",
+  "sourceFingerprint": "a228997311f043f878badc73bdceab68d9de7aa34a3b5b924e02682a899b96f4",
   "editingDomTestsPassed": 32,
-  "treeDomTestsPassed": 14,
+  "treeDomTestsPassed": 18,
   "previousV9RegressionGroups": 88,
   "previousV9SuiteRerun": false,
   "operationSchemaVersion": 4,
@@ -11,12 +11,13 @@
     3,
     4
   ],
-  "realGoogleDriveRoundTripVerified": false,
+  "realGoogleDriveRoundTripVerified": true,
+  "driveVerification": "v9.2 production write/reload and v9.2.1 localhost read of the same synthetic parent, child, image and attachment; downloaded attachment SHA-256 matched",
   "repository": "ws20220403/darakbang",
   "site": "https://ws20220403.github.io/darakbang/",
-  "previousCommit": "700e87e41ec9e43bac248b65ef32268528e4866b",
+  "previousCommit": "6d6f8750d36dfc8d49cfdaf33b25e49f145e12d7",
   "archive": "darakbang-v9-site.zip",
-  "archiveSha256": "3b63da5c1e2437983de0c7dd952b58cecf80096288fc6b1b299c286c9dbd4979",
+  "archiveSha256": "5a6ea001dbd777724add84d848dfa9cf18959f63902d1f989bf7d63c5919aa66",
   "files": [
     {
       "path": ".nojekyll",
@@ -28,11 +29,11 @@
     },
     {
       "path": "css/blocks.css",
-      "sha256": "5ec2f95cfafaa61c50a482d0175762bc53891022728c6c7c8c8041d181bb9df0"
+      "sha256": "21923816f6f55b6410ad6bac39f0c6eba668b1f3df70500ac24db643c0745a21"
     },
     {
       "path": "css/components.css",
-      "sha256": "d85ace6b1f7f9205a1de767de93f003f7cd9ad13c758bac8d6bb2a396ca3031f"
+      "sha256": "d2c38e434c28803a8822aec4f2bffd21dc29037c0b141a943696b8b96fc32c32"
     },
     {
       "path": "css/editor.css",
@@ -64,15 +65,15 @@
     },
     {
       "path": "index.html",
-      "sha256": "fab856822d839c6464d5ef200d71fc9fa0c115f0f145f075cf1f67fe455407ec"
+      "sha256": "3853d68ff7087506dec407914931fa03fe97ba848d4043ae7c74683be0c75d8c"
     },
     {
       "path": "js/app.js",
-      "sha256": "c6f4a78df123b44d3035f38b6a297335d190184505d7e33544c46b0d08501330"
+      "sha256": "db5f1a46250da022725279039d694a1ba60d2d9e36d9df83a5884ebf084c575b"
     },
     {
       "path": "js/auth.js",
-      "sha256": "fa53457212d55c6f96f8a7c5067c5efbf16f08b477d2d93f97077fc9e97ea41b"
+      "sha256": "f6a185278c688968497426bc4b585a646d427a41b5c27743845b1a09f1047656"
     },
     {
       "path": "js/autoformat.js",
@@ -80,11 +81,11 @@
     },
     {
       "path": "js/block-actions.js",
-      "sha256": "34b7594be0f8b00a01cc20d990e50629d9c10952d7a04ea72a96515ad8ce387a"
+      "sha256": "35e869da194bc9e319d6704d48956c709214371d9c5c79a4a98e32c9f252626c"
     },
     {
       "path": "js/blocks.js",
-      "sha256": "0134ef610db3d3d87193ef41184c672c24422ce33a5faa367254352c987a6e41"
+      "sha256": "e3459b1ad3d8de772df68e14e0926e2b1b3014b6807ed62a7efe475f5201b406"
     },
     {
       "path": "js/drive.js",
@@ -236,7 +237,7 @@
     },
     {
       "path": "version.json",
-      "sha256": "91cfa1f8b78ab26c7daa8809727e40b73d1a28c35498645430f45d45d47f3e59"
+      "sha256": "969c34f1bd8364c8b23cae573fbc55d9efdb4400dc138e72cca44ef14c970be4"
     }
   ]
 }
