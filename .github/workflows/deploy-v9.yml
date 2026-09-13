@@ -1,0 +1,46 @@
+name: Deploy Darakbang v9
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - darakbang-v9-site.zip
+      - release-manifest.json
+      - .github/workflows/deploy-v9.yml
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Read release
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Verify and unpack validated site
+        run: |
+          echo 'e894a2079a6d2b6984478c4458149568625fd813a11d1ff482a1dbca31f756c0  darakbang-v9-site.zip' | sha256sum --check
+          python3 -m zipfile -e darakbang-v9-site.zip _site
+          test -f _site/index.html
+          test -f _site/js/workspace.js
+      - name: Configure Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - name: Upload site
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: _site
+      - name: Publish site
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5
