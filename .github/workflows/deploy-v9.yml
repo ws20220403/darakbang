@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Verify and unpack validated site
         run: |
-          echo 'e894a2079a6d2b6984478c4458149568625fd813a11d1ff482a1dbca31f756c0  darakbang-v9-site.zip' | sha256sum --check
+          echo '340fb61ed7ffc1db8f33f6fef4cbc2e869208c4095cf82dc66c36af3088fb52a  darakbang-v9-site.zip' | sha256sum --check
           python3 -m zipfile -e darakbang-v9-site.zip _site
           test -f _site/index.html
           test -f _site/js/workspace.js
