@@ -1,11 +1,16 @@
 {
-  "version": "9.0.0",
-  "preparedAt": "2026-09-13T07:35:04.893606+00:00",
+  "version": "9.1.0",
+  "preparedAt": "2026-09-13T08:51:24.899970+00:00",
+  "sourceFingerprint": "78419e7baf05bcc49c510ccc54f9179ce487e6c54cd66da51e5eadf940005ea6",
+  "editingDomTestsPassed": 28,
+  "previousV9RegressionGroups": 88,
+  "previousV9SuiteRerun": false,
+  "realGoogleDriveRoundTripVerified": false,
   "repository": "ws20220403/darakbang",
   "site": "https://ws20220403.github.io/darakbang/",
-  "previousCommit": "6c1d6cf499e80483da81f9c5f89593dfd3b69377",
+  "previousCommit": "b6289f99d4405b77d4eb57f3f8368033e7517a6b",
   "archive": "darakbang-v9-site.zip",
-  "archiveSha256": "e894a2079a6d2b6984478c4458149568625fd813a11d1ff482a1dbca31f756c0",
+  "archiveSha256": "340fb61ed7ffc1db8f33f6fef4cbc2e869208c4095cf82dc66c36af3088fb52a",
   "files": [
     {
       "path": ".nojekyll",
@@ -17,7 +22,7 @@
     },
     {
       "path": "css/blocks.css",
-      "sha256": "26e34c95b49f7be9a5229e4256e268b664dc8c984482fb98fa6026b9c1aea563"
+      "sha256": "2f41daa7831fb87d06a81baa8bf5d1910e7c9d273dfe54253f742e679a73e8c2"
     },
     {
       "path": "css/components.css",
@@ -53,11 +58,11 @@
     },
     {
       "path": "index.html",
-      "sha256": "4cf0e9b3c1b181a004499fcc885c441f679e87be0eccd4f9f46a91107c23cc45"
+      "sha256": "76a5cdc301cee3d4001d8c9b6a4d8fbd3fc4cd70d5c9aead05d483017191b2a4"
     },
     {
       "path": "js/app.js",
-      "sha256": "019bf48f6555bd802b999232a4647daa8aa379420c4303457a895539010fd17c"
+      "sha256": "0ae04c6adbf9006f13e637eb10e81a6167981f40da81ae7472683486eef06ffa"
     },
     {
       "path": "js/auth.js",
@@ -65,11 +70,11 @@
     },
     {
       "path": "js/autoformat.js",
-      "sha256": "0097cdcd680c0db813e035ec7d0a9888ae8d3d9155140485690494434186c105"
+      "sha256": "354adf0d330e540d60149b847dcbf505f8df9496be5d748f44b84af628c43157"
     },
     {
       "path": "js/blocks.js",
-      "sha256": "916659394ebf8b5863e2eaa4dc48c7fb7d66274898f2fd278653faee6a7c8e36"
+      "sha256": "d73e59b9c18efcb5773670335ad712712efad3e172b673cc3c93d91d8b52ca6f"
     },
     {
       "path": "js/drive.js",
@@ -77,11 +82,11 @@
     },
     {
       "path": "js/editor.js",
-      "sha256": "29f820276c850e1820cafad3998fbaa651f0129cf22e2283a6ae947db703029a"
+      "sha256": "610b5e3062989cd7c3479d2d71c02e32660e3323ad7852dce982d1860b6de072"
     },
     {
       "path": "js/export.js",
-      "sha256": "d0ff152d438054c47a21034c9ccf63cf435e2a0b2d38930f252c199220976c88"
+      "sha256": "70b886e5fde9a0891e41b1588d82dc8c51a0282f82d4c442c4dab73422c6531d"
     },
     {
       "path": "js/formula.js",
@@ -89,7 +94,11 @@
     },
     {
       "path": "js/history.js",
-      "sha256": "a4eee1449f185cdb7461351ba6a2788f4152b1622a53316386188ad4ff01dabd"
+      "sha256": "47ebaeacbeff3c08e4e068595397032e3a4720ab98f7ce4c48fb70163ad0c186"
+    },
+    {
+      "path": "js/inline-editing.js",
+      "sha256": "529a7c106cef63f710ea6545914645b1dc96805e793408c27c04e3b4c15e9d9c"
     },
     {
       "path": "js/local-db.js",
@@ -105,7 +114,7 @@
     },
     {
       "path": "js/safe.js",
-      "sha256": "6e0d316f6be229a94f0929f2cf7625d7c0cb870915cdd33638fcb0c17c00cd34"
+      "sha256": "7e6cbdf8904f26bd509d9cbf3467f48d6d2b6b08187fb86e10b285e26ecf9883"
     },
     {
       "path": "js/samples.js",
@@ -113,7 +122,7 @@
     },
     {
       "path": "js/shortcuts.js",
-      "sha256": "ad472cfd4077bbb2c470e81849dfafeb562893631d8cf042633b966bd7e3e2b1"
+      "sha256": "b2cd3dc7691bb2df3c597a825ee2680b0acdbefcbb0469b702f69dcb8a117083"
     },
     {
       "path": "js/sidebar.js",
@@ -217,7 +226,7 @@
     },
     {
       "path": "version.json",
-      "sha256": "a25229576a5ad528b1d8850fb0b99655cfa231b7a5eadb32a95213813ce2197a"
+      "sha256": "68791e47ab1ce5d43277396dc8a4c60f54d772f0342a7f949188677cdbebfa74"
     }
   ]
 }
